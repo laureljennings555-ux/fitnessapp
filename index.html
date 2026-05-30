@@ -64,6 +64,7 @@
 </head>
 <body>
 
+  <!-- 1. 今日进度 -->
   <div class="card">
     <h2>📊 今日动态进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">清空重记</button></h2>
     <div class="progress-wrap">
@@ -84,8 +85,12 @@
       <div class="progress-bg"><div class="progress-fill bg-red" id="bar-fat"></div></div>
     </div>
     <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
+
+    <!-- 新增：智能米饭分配器 -->
+    <div id="rice-calculator" style="margin-top: 16px; background: #fff7ed; border-radius: 8px; padding: 12px; border: 1px dashed #fdba74;"></div>
   </div>
 
+  <!-- 2. 7天智能稽查面板 -->
   <div class="card" style="background: #fdfaf5; border: 1px solid #fde68a;">
     <h2>📈 近7日闭环数据稽查</h2>
     <div class="grid-3" style="gap: 8px; margin-bottom: 12px;">
@@ -106,10 +111,12 @@
       </div>
     </div>
     
+    <!-- AI 偏差分析结论框 -->
     <div id="ai-analysis-container"></div>
     <ul class="weight-list" id="weekly-history-list" style="margin-top: 16px;"></ul>
   </div>
 
+  <!-- 3. 饮食记录 -->
   <div class="card">
     <h2>📸 精准饮食记录</h2>
     <div id="saved-foods-area" style="display: none;">
@@ -141,14 +148,17 @@
     <button onclick="addFood()">存入流水账</button>
   </div>
 
+  <!-- 饮食流水账 -->
   <div class="card">
     <h2>📝 今日饮食流水账</h2>
     <ul class="food-list" id="food-history"></ul>
     <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
   </div>
 
+  <!-- 4. 体重与腰围打卡 -->
   <div class="card">
     <h2>⚖️ 体重与腰围打卡</h2>
+    <!-- 新增：腰围输入框 -->
     <div class="grid-3" style="grid-template-columns: 1fr 1fr auto; margin-bottom: 16px;">
       <input type="number" id="weight-input" step="0.1" placeholder="体重(kg)" style="margin-bottom:0;">
       <input type="number" id="waist-input" step="0.1" placeholder="腰围(cm) 可选" style="margin-bottom:0;">
@@ -158,6 +168,7 @@
     <ul class="weight-list" id="weight-history"></ul>
   </div>
 
+  <!-- 5. 引擎设置与个人资料 -->
   <div class="settings-panel" style="background: #eef2ff; border-color: #c7d2fe;">
     <h2 style="border:none; padding:0; margin-bottom:12px; color: #4338ca;">🤖 AI守护自适应引擎</h2>
     <div class="grid-3">
@@ -187,6 +198,7 @@
     </div>
   </div>
 
+  <!-- 数据备份 -->
   <div class="card">
     <h2>💾 数据安全与备份</h2>
     <div class="grid-2">
@@ -197,6 +209,7 @@
     </div>
   </div>
 
+  <!-- 快捷弹窗 (隐藏部分) -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
   <div class="modal" id="quick-modal">
     <h3 id="qm-title">添加食物</h3>
@@ -216,7 +229,6 @@
   <script>
     let profile = JSON.parse(localStorage.getItem('recomp_profile_v4')) || { gender: 'male', age: 20, height: 178, activity: 1.375, deficit: -300, baselineWeight: null };
     let dailyLog = JSON.parse(localStorage.getItem('recomp_daily_log_v2')) || [];
-    // weightLog 结构升级支持腰围：{ date: "05/30", weight: 75.0, waist: 80.5 }
     let weightLog = JSON.parse(localStorage.getItem('recomp_weights')) || [];
     let savedFoods = JSON.parse(localStorage.getItem('recomp_saved_foods_v2')) || [];
     let dailySummaries = JSON.parse(localStorage.getItem('recomp_daily_summaries')) || [];
@@ -301,7 +313,16 @@
     function renderDashboard() {
       const t = getDynamicTargets();
       let sums = { cal: 0, pro: 0, carb: 0, fat: 0, sodium: 0 };
-      dailyLog.forEach(food => { sums.cal += food.cal; sums.pro += food.pro; sums.carb += food.carb; sums.fat += food.fat; sums.sodium += (food.sodium || 0); });
+      
+      // 新增：记录各餐的碳水摄入量，用于米饭计算
+      let mealCarbs = { '早餐': 0, '午餐': 0, '晚餐': 0, '加餐': 0 };
+
+      dailyLog.forEach(food => { 
+        sums.cal += food.cal; sums.pro += food.pro; sums.carb += food.carb; sums.fat += food.fat; sums.sodium += (food.sodium || 0); 
+        if (mealCarbs[food.meal] !== undefined) {
+          mealCarbs[food.meal] += food.carb;
+        }
+      });
       
       document.getElementById('display-baseline').innerText = t.weight.toFixed(1);
 
@@ -334,6 +355,45 @@
       document.getElementById('bar-pro').style.width = Math.min((sums.pro/t.pro)*100, 100) + '%';
       document.getElementById('bar-carb').style.width = Math.min((sums.carb/t.carb)*100, 100) + '%';
       document.getElementById('bar-fat').style.width = Math.min((sums.fat/t.fat)*100, 100) + '%';
+
+      // ==========================================
+      // 【核心升级】：智能米饭熟重分配逻辑 (3:4)
+      // ==========================================
+      const riceEl = document.getElementById('rice-calculator');
+      if (riceEl) {
+        // 1. 算出早/加餐吃掉的碳水，剩下都给午晚饭
+        const carbPool = Math.max(0, t.carb - mealCarbs['早餐'] - mealCarbs['加餐']);
+        
+        // 2. 按 3:4 分配目标碳水
+        const targetLunchCarb = carbPool * (3 / 7);
+        const targetDinnerCarb = carbPool * (4 / 7);
+
+        // 3. 扣除午/晚餐已经吃掉的其他碳水（比如炒菜里的碳水），算出还能吃多少
+        const neededLunchCarb = Math.max(0, targetLunchCarb - mealCarbs['午餐']);
+        const neededDinnerCarb = Math.max(0, targetDinnerCarb - mealCarbs['晚餐']);
+
+        // 4. 换算熟米饭 (100g 熟米饭 ≈ 26g 碳水)
+        const lunchRice = Math.round(neededLunchCarb / 0.26);
+        const dinnerRice = Math.round(neededDinnerCarb / 0.26);
+
+        riceEl.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:bold; color:#c2410c;">🍚 午/晚餐米饭称重指南 (3:4)</span>
+            <span style="font-size:0.7rem; color:#ea580c; background:#ffedd5; padding:2px 6px; border-radius:4px;">100g熟饭≈26g碳水</span>
+          </div>
+          <div class="grid-2" style="gap:8px;">
+            <div style="background:#fff; border:1px solid #fdba74; padding:8px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+              <div style="font-size:0.75rem; color:#9a3412; margin-bottom:2px;">🍱 午餐还需称重</div>
+              <div style="font-size:1.4rem; font-weight:bold; color:#ea580c;">${lunchRice} <span style="font-size:0.8rem; font-weight:normal;">g</span></div>
+            </div>
+            <div style="background:#fff; border:1px solid #fdba74; padding:8px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+              <div style="font-size:0.75rem; color:#9a3412; margin-bottom:2px;">🍽️ 晚餐还需称重</div>
+              <div style="font-size:1.4rem; font-weight:bold; color:#ea580c;">${dinnerRice} <span style="font-size:0.8rem; font-weight:normal;">g</span></div>
+            </div>
+          </div>
+          <div style="font-size:0.7rem; color:#f97316; margin-top:6px; text-align:center;">*(已自动扣除早/加餐及该餐记录的其他碳水)</div>
+        `;
+      }
     }
 
     function renderWeeklyReview() {
@@ -342,7 +402,6 @@
         const sumW = recentWeights.reduce((acc, curr) => acc + curr.weight, 0);
         document.getElementById('avg-weight').innerText = (sumW / recentWeights.length).toFixed(1);
 
-        // 新增：计算平均腰围
         const waists = recentWeights.filter(e => e.waist);
         if (waists.length > 0) {
            const sumWaist = waists.reduce((acc, curr) => acc + curr.waist, 0);
@@ -377,7 +436,6 @@
           const newestWeight = weightLog[0].weight;
           const weightDiff = newestWeight - oldestWeightInWindow; 
 
-          // 提取头尾腰围差值
           let waistDiff = 0;
           let hasWaistData = false;
           const oldestWaistEntry = weightLog[Math.min(6, weightLog.length-1)];
@@ -389,7 +447,6 @@
 
           const theoreticalLoss = (realDeficit * recentSummaries.length) / 7700;
 
-          // ========== AI 身体重组终极判定 ==========
           if (hasWaistData && waistDiff <= -0.5 && weightDiff > -0.5 && weightDiff <= 1.0) {
              aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#f5f3ff; border:1px solid #c4b5fd; color:#5b21b6;">
@@ -398,7 +455,6 @@
                 这意味着您减掉的脂肪重量，完全被新长出的肌肉填补了。这是健身界最难达成的顶级成果，请无视体重秤，继续保持！
               </div>`;
           } 
-          // 原有逻辑保留
           else if (realDeficit > 150 && weightDiff > 0) {
             aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">
@@ -450,7 +506,6 @@
       }
     }
 
-    // ========== 修改：打卡体重和腰围 ==========
     function addWeightAndWaist() {
       const weight = parseFloat(document.getElementById('weight-input').value);
       const waist = parseFloat(document.getElementById('waist-input').value);
@@ -495,7 +550,6 @@
     function saveAndRefreshFood() { localStorage.setItem('recomp_daily_log_v2', JSON.stringify(dailyLog)); renderDashboard(); renderFoodLog(); }
     function resetDaily() { if(confirm('清空今天饮食吗？\n注意：不影响历史归档数据。')) { dailyLog = []; saveAndRefreshFood(); } }
     
-    // ========== 渲染打卡历史时加入腰围展示 ==========
     function renderWeightHistory() { 
       const list = document.getElementById('weight-history'); 
       list.innerHTML = ''; 
@@ -507,7 +561,6 @@
           else if (diff < 0) diffStr = `<span style="color:#10b981;">${diff}kg</span>`; 
         } 
         
-        // 追加腰围差值
         let waistStr = '';
         if (entry.waist) {
            let wDiffStr = '<span style="color:#94a3b8;">-</span>';
