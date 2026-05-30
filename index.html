@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Recomp Tracker Auto-Pilot Pro</title>
+  <title>Recomp Tracker AI Guard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -59,12 +59,113 @@
     
     .review-box { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
     .review-val { font-size: 1.4rem; font-weight: bold; color: var(--primary); margin: 4px 0;}
+    .ai-guard-box { margin-top: 12px; padding: 12px; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; }
   </style>
 </head>
 <body>
 
+  <!-- 1. 今日进度 (最前) -->
+  <div class="card">
+    <h2>📊 今日动态进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">清空重记</button></h2>
+    
+    <div class="progress-wrap">
+      <div class="progress-header"><span>🔥 热量 (kcal)</span> <span id="text-cal" class="stats">0 / --</span></div>
+      <div class="progress-bg"><div class="progress-fill bg-blue" id="bar-cal"></div></div>
+      <div id="cal-diff-alert" style="font-size: 0.85rem; text-align: right; margin-top: 4px; font-weight: bold;"></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-header"><span>🍗 蛋白质 (g)</span> <span id="text-pro" class="stats">0 / --</span></div>
+      <div class="progress-bg"><div class="progress-fill bg-green" id="bar-pro"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-header"><span>🍚 碳水化合物 (g)</span> <span id="text-carb" class="stats">0 / --</span></div>
+      <div class="progress-bg"><div class="progress-fill bg-yellow" id="bar-carb"></div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-header"><span>🥑 脂肪 (g)</span> <span id="text-fat" class="stats">0 / --</span></div>
+      <div class="progress-bg"><div class="progress-fill bg-red" id="bar-fat"></div></div>
+    </div>
+    <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
+  </div>
+
+  <!-- 2. 7天智能稽查面板 (第二) -->
+  <div class="card" style="background: #fdfaf5; border: 1px solid #fde68a;">
+    <h2>📈 近7日闭环数据稽查</h2>
+    <div class="grid-3" style="gap: 8px; margin-bottom: 12px;">
+      <div class="review-box">
+        <div class="text-sm">7天均体重</div>
+        <div class="review-val" id="avg-weight">--</div>
+        <div class="text-sm">kg</div>
+      </div>
+      <div class="review-box">
+        <div class="text-sm">均日摄入</div>
+        <div class="review-val" id="avg-intake">--</div>
+        <div class="text-sm">kcal</div>
+      </div>
+      <div class="review-box" style="background: #eff6ff; border-color: #bfdbfe;">
+        <div class="text-sm" style="color: #1d4ed8;">日均缺口</div>
+        <div class="review-val" id="avg-deficit" style="color: #1d4ed8;">--</div>
+        <div class="text-sm">kcal</div>
+      </div>
+    </div>
+    <!-- AI 偏差分析结论框 -->
+    <div id="ai-analysis-container"></div>
+    <ul class="weight-list" id="weekly-history-list" style="margin-top: 16px;"></ul>
+  </div>
+
+  <!-- 3. 饮食记录 (第三) -->
+  <div class="card">
+    <h2>📸 精准饮食记录</h2>
+    <div id="saved-foods-area" style="display: none;">
+      <div class="text-sm" style="margin-bottom: 8px;">⭐️ 快捷添加 (点击记录)：</div>
+      <div class="chip-container" id="saved-foods-list"></div>
+    </div>
+    <div class="grid-2">
+      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：大米饭"></div>
+      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐">🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
+    </div>
+    <div class="form-group">
+      <div class="grid-2">
+        <div><label class="text-sm">基于每多少克/份？</label><input type="number" id="food-base" value="100"></div>
+        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;">本次吃多少？</label><input type="text" id="food-eat" placeholder="支持算式如 110*2"></div>
+      </div>
+    </div>
+    <label class="text-sm">👇 包装袋上的五大项：</label>
+    <div class="input-group">
+      <input type="number" id="food-energy" placeholder="能量数值">
+      <select id="energy-unit"><option value="kj">千焦(kJ)</option><option value="kcal">千卡(kcal)</option></select>
+    </div>
+    <div class="grid-2">
+      <input type="number" id="food-pro" placeholder="蛋白质(g)">
+      <input type="number" id="food-carb" placeholder="碳水(g)">
+      <input type="number" id="food-fat" placeholder="脂肪(g)">
+      <input type="number" id="food-sodium" placeholder="钠(mg)">
+    </div>
+    <label class="checkbox-wrap"><input type="checkbox" id="save-to-lib"> 同时存入“快捷食物库”</label>
+    <button onclick="addFood()">存入流水账</button>
+  </div>
+
+  <!-- 饮食流水账 -->
+  <div class="card">
+    <h2>📝 今日饮食流水账</h2>
+    <ul class="food-list" id="food-history"></ul>
+    <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
+  </div>
+
+  <!-- 4. 体重打卡与趋势 (第四) -->
+  <div class="card">
+    <h2>⚖️ 体重打卡与趋势</h2>
+    <div class="grid-2" style="grid-template-columns: 1fr auto; margin-bottom: 16px;">
+      <input type="number" id="weight-input" step="0.1" placeholder="今日体重(kg)" style="margin-bottom:0;">
+      <button onclick="addWeight()" style="width: 80px;">打卡</button>
+    </div>
+    <div class="chart-container"><canvas id="weightChart"></canvas></div>
+    <ul class="weight-list" id="weight-history"></ul>
+  </div>
+
+  <!-- 5. 引擎设置与个人资料 (最后) -->
   <div class="settings-panel" style="background: #eef2ff; border-color: #c7d2fe;">
-    <h2 style="border:none; padding:0; margin-bottom:12px; color: #4338ca;">🤖 身体数据与自适应引擎</h2>
+    <h2 style="border:none; padding:0; margin-bottom:12px; color: #4338ca;">🤖 AI守护自适应引擎</h2>
     <div class="grid-3">
       <div><label class="text-sm">性别</label><select id="profile-gender" onchange="saveProfile()" style="padding: 8px;"><option value="male">男</option><option value="female">女</option></select></div>
       <div><label class="text-sm">年龄</label><input type="number" id="profile-age" onchange="saveProfile()" style="padding: 8px;"></div>
@@ -92,104 +193,7 @@
     </div>
   </div>
 
-  <div class="card" style="background: #fdfaf5; border: 1px solid #fde68a;">
-    <h2>📈 近7日滚动复盘与明细</h2>
-    <div class="grid-3" style="gap: 8px; margin-bottom: 12px;">
-      <div class="review-box">
-        <div class="text-sm">7天均体重</div>
-        <div class="review-val" id="avg-weight">--</div>
-        <div class="text-sm">kg</div>
-      </div>
-      <div class="review-box">
-        <div class="text-sm">均日摄入</div>
-        <div class="review-val" id="avg-intake">--</div>
-        <div class="text-sm">kcal</div>
-      </div>
-      <div class="review-box" style="background: #eff6ff; border-color: #bfdbfe;">
-        <div class="text-sm" style="color: #1d4ed8;">日均缺口</div>
-        <div class="review-val" id="avg-deficit" style="color: #1d4ed8;">--</div>
-        <div class="text-sm">kcal</div>
-      </div>
-    </div>
-    <ul class="weight-list" id="weekly-history-list"></ul>
-    <div class="text-sm" style="margin-top: 10px; color: #94a3b8; text-align: center;">(跨天访问页面时，系统将自动将昨日数据归档至此)</div>
-  </div>
-
-  <div class="card">
-    <h2>📊 今日动态进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">清空重记</button></h2>
-    
-    <div class="progress-wrap">
-      <div class="progress-header"><span>🔥 热量 (kcal)</span> <span id="text-cal" class="stats">0 / --</span></div>
-      <div class="progress-bg"><div class="progress-fill bg-blue" id="bar-cal"></div></div>
-      <div id="cal-diff-alert" style="font-size: 0.85rem; text-align: right; margin-top: 4px; font-weight: bold;"></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-header"><span>🍗 蛋白质 (g)</span> <span id="text-pro" class="stats">0 / --</span></div>
-      <div class="progress-bg"><div class="progress-fill bg-green" id="bar-pro"></div></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-header"><span>🍚 碳水化合物 (g)</span> <span id="text-carb" class="stats">0 / --</span></div>
-      <div class="progress-bg"><div class="progress-fill bg-yellow" id="bar-carb"></div></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-header"><span>🥑 脂肪 (g)</span> <span id="text-fat" class="stats">0 / --</span></div>
-      <div class="progress-bg"><div class="progress-fill bg-red" id="bar-fat"></div></div>
-    </div>
-    <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
-  </div>
-
-  <div class="card">
-    <h2>📸 精准饮食记录</h2>
-    <div id="saved-foods-area" style="display: none;">
-      <div class="text-sm" style="margin-bottom: 8px;">⭐️ 快捷添加 (点击记录)：</div>
-      <div class="chip-container" id="saved-foods-list"></div>
-    </div>
-
-    <div class="grid-2">
-      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：大米饭"></div>
-      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐">🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
-    </div>
-    
-    <div class="form-group">
-      <div class="grid-2">
-        <div><label class="text-sm">基于每多少克/份？</label><input type="number" id="food-base" value="100"></div>
-        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;">本次吃多少？</label><input type="text" id="food-eat" placeholder="支持算式如 110*2"></div>
-      </div>
-    </div>
-
-    <label class="text-sm">👇 包装袋上的五大项：</label>
-    <div class="input-group">
-      <input type="number" id="food-energy" placeholder="能量数值">
-      <select id="energy-unit"><option value="kj">千焦(kJ)</option><option value="kcal">千卡(kcal)</option></select>
-    </div>
-
-    <div class="grid-2">
-      <input type="number" id="food-pro" placeholder="蛋白质(g)">
-      <input type="number" id="food-carb" placeholder="碳水(g)">
-      <input type="number" id="food-fat" placeholder="脂肪(g)">
-      <input type="number" id="food-sodium" placeholder="钠(mg)">
-    </div>
-    
-    <label class="checkbox-wrap"><input type="checkbox" id="save-to-lib"> 同时存入“快捷食物库”</label>
-    <button onclick="addFood()">存入流水账</button>
-  </div>
-
-  <div class="card">
-    <h2>📝 今日饮食流水账</h2>
-    <ul class="food-list" id="food-history"></ul>
-    <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
-  </div>
-
-  <div class="card">
-    <h2>⚖️ 体重打卡与趋势</h2>
-    <div class="grid-2" style="grid-template-columns: 1fr auto; margin-bottom: 16px;">
-      <input type="number" id="weight-input" step="0.1" placeholder="今日体重(kg)" style="margin-bottom:0;">
-      <button onclick="addWeight()" style="width: 80px;">打卡</button>
-    </div>
-    <div class="chart-container"><canvas id="weightChart"></canvas></div>
-    <ul class="weight-list" id="weight-history"></ul>
-  </div>
-
+  <!-- 数据备份 -->
   <div class="card">
     <h2>💾 数据安全与备份</h2>
     <div class="grid-2">
@@ -200,6 +204,7 @@
     </div>
   </div>
 
+  <!-- 快捷弹窗 (隐藏部分) -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
   <div class="modal" id="quick-modal">
     <h3 id="qm-title">添加食物</h3>
@@ -217,7 +222,6 @@
   </div>
 
   <script>
-    // 新增：引入 baselineWeight (基准体重) 属性
     let profile = JSON.parse(localStorage.getItem('recomp_profile_v4')) || { gender: 'male', age: 20, height: 178, activity: 1.375, deficit: -300, baselineWeight: null };
     let dailyLog = JSON.parse(localStorage.getItem('recomp_daily_log_v2')) || [];
     let weightLog = JSON.parse(localStorage.getItem('recomp_weights')) || [];
@@ -227,14 +231,10 @@
     let chartInstance = null;
     let currentQuickIndex = -1; 
 
-    // 初始化基准体重（如果是新用户第一次用）
     function initBaselineWeight() {
       if (!profile.baselineWeight) {
-        if (weightLog.length > 0) {
-          profile.baselineWeight = weightLog[0].weight;
-        } else {
-          profile.baselineWeight = 75; // 默认值
-        }
+        if (weightLog.length > 0) { profile.baselineWeight = weightLog[0].weight; } 
+        else { profile.baselineWeight = 75; }
         localStorage.setItem('recomp_profile_v4', JSON.stringify(profile));
       }
       document.getElementById('display-baseline').innerText = profile.baselineWeight.toFixed(1);
@@ -244,10 +244,7 @@
       const todayStr = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
       let activeDate = localStorage.getItem('recomp_active_date');
       
-      if (!activeDate) {
-        localStorage.setItem('recomp_active_date', todayStr);
-        return;
-      }
+      if (!activeDate) { localStorage.setItem('recomp_active_date', todayStr); return; }
       
       if (activeDate !== todayStr) {
         if (dailyLog.length > 0) {
@@ -255,15 +252,9 @@
           let sumsCal = 0;
           dailyLog.forEach(food => sumsCal += food.cal);
           
-          dailySummaries.unshift({ 
-            date: activeDate, 
-            consumed: Math.round(sumsCal), 
-            target: t.cal, 
-            tdee: t.tdee 
-          });
+          dailySummaries.unshift({ date: activeDate, consumed: Math.round(sumsCal), target: t.cal, tdee: t.tdee });
           localStorage.setItem('recomp_daily_summaries', JSON.stringify(dailySummaries));
         }
-        
         dailyLog = [];
         localStorage.setItem('recomp_daily_log_v2', JSON.stringify(dailyLog));
         localStorage.setItem('recomp_active_date', todayStr);
@@ -271,19 +262,15 @@
     }
 
     window.onload = function() {
-      initBaselineWeight();
-      checkAutoArchive();
-
+      initBaselineWeight(); checkAutoArchive();
       document.getElementById('profile-gender').value = profile.gender;
       document.getElementById('profile-age').value = profile.age;
       document.getElementById('profile-height').value = profile.height;
       document.getElementById('profile-activity').value = profile.activity;
       document.getElementById('profile-deficit').value = profile.deficit;
-      
       renderDashboard(); renderFoodLog(); renderWeightHistory(); renderSavedFoods(); renderWeeklyReview();
     };
 
-    // 算法核心：现在所有目标完全基于【锁定的基准体重 (baselineWeight)】来计算！
     function getDynamicTargets() {
       const calcWeight = profile.baselineWeight; 
       let bmr = 0;
@@ -291,15 +278,21 @@
       else { bmr = Math.round((10 * calcWeight) + (6.25 * profile.height) - (5 * profile.age) - 161); }
       
       const tdee = Math.round(bmr * profile.activity);
+      
       let targetCal = tdee + profile.deficit;
-      if (targetCal < 1200) targetCal = 1200; 
+      let bmrFloorAlert = false;
+
+      if (targetCal < bmr) {
+        targetCal = bmr;
+        bmrFloorAlert = true; 
+      }
       
       const targetPro = Math.round(calcWeight * 2);             
       const targetFat = Math.round((bmr * 0.25) / 9);              
       const remainingCals = targetCal - (targetPro * 4) - (targetFat * 9);
       const targetCarb = Math.max(0, Math.round(remainingCals / 4));
 
-      return { cal: targetCal, pro: targetPro, carb: targetCarb, fat: targetFat, bmr: bmr, tdee: tdee, weight: calcWeight };
+      return { cal: targetCal, pro: targetPro, carb: targetCarb, fat: targetFat, bmr: bmr, tdee: tdee, weight: calcWeight, bmrFloorAlert: bmrFloorAlert };
     }
 
     function saveProfile() {
@@ -314,15 +307,20 @@
 
     function renderDashboard() {
       const t = getDynamicTargets();
-      let sums = { cal: 0, pro: 0, carb: 0, carb: 0, fat: 0, sodium: 0 };
+      let sums = { cal: 0, pro: 0, carb: 0, fat: 0, sodium: 0 };
       dailyLog.forEach(food => { sums.cal += food.cal; sums.pro += food.pro; sums.carb += food.carb; sums.fat += food.fat; sums.sodium += (food.sodium || 0); });
       
       document.getElementById('display-baseline').innerText = t.weight.toFixed(1);
 
+      let bmrWarningHtml = t.bmrFloorAlert 
+        ? `<div style="color:#ef4444; font-weight:bold; margin-top:6px; border-top:1px dashed #ef4444; padding-top:6px;">⚠️ 设定缺口过大！为保护内分泌，已强制将热量锁在 BMR 底线。</div>` 
+        : ``;
+
       document.getElementById('dynamic-metabolism-panel').innerHTML = `
         BMR: <b>${t.bmr}</b> | 今日 TDEE: <b>${t.tdee}</b> kcal<br>
-        🔥 目标热量 = <b>${t.cal}</b> kcal<br>
+        🔥 安全目标热量 = <b>${t.cal}</b> kcal<br>
         🍗 蛋白(×2) = <b>${t.pro}g</b> | 🥑 脂肪 = <b>${t.fat}g</b> | 🍚 碳水 = <b>${t.carb}g</b>
+        ${bmrWarningHtml}
       `;
 
       const diffCal = t.cal - sums.cal;
@@ -354,7 +352,9 @@
 
       const recentSummaries = dailySummaries.slice(0, 7);
       const histList = document.getElementById('weekly-history-list');
+      const aiBox = document.getElementById('ai-analysis-container');
       histList.innerHTML = '';
+      aiBox.innerHTML = '';
       
       if (recentSummaries.length > 0) {
         const sumIntake = recentSummaries.reduce((acc, curr) => acc + curr.consumed, 0);
@@ -363,11 +363,55 @@
         
         const sumTdee = recentSummaries.reduce((acc, curr) => acc + curr.tdee, 0);
         const avgTdee = Math.round(sumTdee / recentSummaries.length);
-        const realDeficit = avgTdee - avgIntake;
+        
+        const realDeficit = avgTdee - avgIntake; 
         
         const defEl = document.getElementById('avg-deficit');
         defEl.innerText = realDeficit > 0 ? `-${realDeficit}` : `+${Math.abs(realDeficit)}`;
         defEl.style.color = realDeficit > 0 ? '#10b981' : '#ef4444'; 
+
+        if (recentSummaries.length >= 5 && weightLog.length >= 5) {
+          const oldestWeightInWindow = weightLog[Math.min(6, weightLog.length-1)].weight;
+          const newestWeight = weightLog[0].weight;
+          const weightDiff = newestWeight - oldestWeightInWindow; 
+
+          const theoreticalLoss = (realDeficit * recentSummaries.length) / 7700;
+
+          if (realDeficit > 150 && weightDiff > 0) {
+            aiBox.innerHTML = `
+              <div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">
+                💡 <b>AI 数据稽查：记录误差警报！</b><br>
+                您近几天日均有 <b>${realDeficit} kcal</b> 的缺口，理论应瘦 <b>${theoreticalLoss.toFixed(2)} kg</b>。<br>
+                但实际却反涨了 <b>${weightDiff.toFixed(1)} kg</b>。<br>
+                <b>建议排查：</b><br>
+                1. 漏记隐形热量（炒菜油、酱汁、零食）。<br>
+                2. 食物生熟重混淆（熟米饭按生米热量记了）。<br>
+                3. 重训后肌肉发炎或吃得太咸引起的严重生理储水。
+              </div>`;
+          } else if (realDeficit > 150 && weightDiff > -0.2 && weightDiff <= 0) {
+            aiBox.innerHTML = `
+              <div class="ai-guard-box" style="background:#fffbeb; border:1px solid #fde68a; color:#92400e;">
+                💡 <b>AI 数据稽查：平台期或轻微漏记</b><br>
+                近期理论应减 <b>${theoreticalLoss.toFixed(2)} kg</b>，但实际体重无明显下降。<br>
+                若不是处于生理期/高压睡眠差状态，请更严谨地称量碳水和脂肪。
+              </div>`;
+          } else if (realDeficit > 100 && weightDiff <= -0.2) {
+            aiBox.innerHTML = `
+              <div class="ai-guard-box" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;">
+                🎉 <b>AI 数据稽查：完美执行期！</b><br>
+                数据完全吻合。您不仅保持了热量缺口，体重也如期下降了 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>，干得漂亮，继续保持！
+              </div>`;
+          } else if (realDeficit < -150 && weightDiff < 0) {
+             aiBox.innerHTML = `
+              <div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">
+                💡 <b>AI 数据稽查：热量高估警报！</b><br>
+                您日均有盈余，但体重却反掉了 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>。<br>
+                您的实际日常消耗远大于估算，或者您高估了吃进去的食物重量！
+              </div>`;
+          }
+        } else {
+          aiBox.innerHTML = `<div class="text-sm" style="margin-top: 10px; color: #94a3b8; text-align: center;">(累积满 5 天记录后，AI 将自动进行闭环误差分析)</div>`;
+        }
 
         recentSummaries.forEach(sum => {
           const li = document.createElement('li');
@@ -376,13 +420,7 @@
             ? `<span style="color:#10b981; font-weight:bold;">缺口 ${diff}</span>` 
             : `<span style="color:#ef4444; font-weight:bold;">盈余 ${Math.abs(diff)}</span>`;
           
-          li.innerHTML = `
-            <span>
-              <span class="text-sm" style="display:inline-block; width:45px;">${sum.date}</span> 
-              摄入 <b>${sum.consumed}</b> / 消耗 ${sum.tdee}
-            </span>
-            ${diffHTML}
-          `;
+          li.innerHTML = `<span><span class="text-sm" style="display:inline-block; width:45px;">${sum.date}</span> 摄入 <b>${sum.consumed}</b> / 消耗 ${sum.tdee}</span>${diffHTML}`;
           histList.appendChild(li);
         });
       } else {
@@ -390,7 +428,6 @@
       }
     }
 
-    // ========== 新增：打卡体重时检查是否触发重算阈值 ==========
     function addWeight() {
       const weight = parseFloat(document.getElementById('weight-input').value);
       if (!weight) return alert('请输入有效体重');
@@ -400,241 +437,37 @@
       localStorage.setItem('recomp_weights', JSON.stringify(weightLog));
       document.getElementById('weight-input').value = '';
       
-      // 检查最近几天（最多7天）的平均体重
       const recent7 = weightLog.slice(0, 7);
-      if (recent7.length >= 3) { // 至少有3天的打卡数据才进行平均值校验，避免太敏感
+      if (recent7.length >= 3) { 
         const sumW = recent7.reduce((acc, curr) => acc + curr.weight, 0);
         const avgW = sumW / recent7.length;
 
-        // 如果 7天均值 和 锁定的基准体重 差值达到 1kg
         if (Math.abs(avgW - profile.baselineWeight) >= 1.0) {
           const oldBaseline = profile.baselineWeight;
           profile.baselineWeight = Math.round(avgW * 10) / 10;
           localStorage.setItem('recomp_profile_v4', JSON.stringify(profile));
-          
-          alert(`🎉 恭喜触发【动态校准】！\n\n您的近期平均体重已实质性变为 ${profile.baselineWeight}kg (原:${oldBaseline}kg)。\n\n系统已为您自动重算并更新了基础代谢、蛋白质以及碳水目标！`);
+          alert(`🎉 触发【动态校准】！\n\n您的近期平均体重已实质性变为 ${profile.baselineWeight}kg (原:${oldBaseline}kg)。\n\n系统已自动重算基础代谢及宏量营养素！`);
         }
       }
 
-      renderWeightHistory(); 
-      renderDashboard(); 
-      renderWeeklyReview();
+      renderWeightHistory(); renderDashboard(); renderWeeklyReview();
     }
 
-    function parseMathInput(inputStr) {
-      if (!inputStr) return NaN;
-      const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, '');
-      if (sanitized === '') return NaN;
-      try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; }
-    }
-
-    function renderSavedFoods() {
-      const area = document.getElementById('saved-foods-area');
-      const list = document.getElementById('saved-foods-list');
-      list.innerHTML = '';
-      if (savedFoods.length === 0) { area.style.display = 'none'; return; }
-      area.style.display = 'block';
-      savedFoods.forEach((food, index) => {
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.innerHTML = `<span onclick="openQuickModal(${index})">🍔 ${food.name}</span><button class="chip-del" onclick="deleteSavedFood(${index})">×</button>`;
-        list.appendChild(chip);
-      });
-    }
-
-    function openQuickModal(index) {
-      currentQuickIndex = index;
-      const food = savedFoods[index];
-      document.getElementById('qm-title').innerText = `添加【${food.name}】`;
-      document.getElementById('qm-base-info').innerText = `此食物营养数据基于：${food.baseAmt} 克/份`;
-      document.getElementById('qm-eat').value = ''; 
-      document.getElementById('qm-eat').placeholder = `不填则默认按 ${food.baseAmt} 算`;
-      document.getElementById('quick-modal-overlay').style.display = 'block';
-      document.getElementById('quick-modal').style.display = 'block';
-    }
-
-    function closeQuickModal() {
-      document.getElementById('quick-modal-overlay').style.display = 'none';
-      document.getElementById('quick-modal').style.display = 'none';
-      currentQuickIndex = -1;
-    }
-
-    function confirmQuickAdd() {
-      if (currentQuickIndex === -1) return;
-      const food = savedFoods[currentQuickIndex];
-      const eatAmtRaw = document.getElementById('qm-eat').value;
-      let eatAmt = parseMathInput(eatAmtRaw);
-      
-      if (isNaN(eatAmt) || eatAmt <= 0) {
-        if (eatAmtRaw.trim() === '') { eatAmt = food.baseAmt; } 
-        else { return alert('❌ 请输入有效的数字或算式！'); }
-      }
-
-      const mealType = document.getElementById('qm-meal').value;
-      const ratio = eatAmt / food.baseAmt;
-      let finalKcal = food.energy;
-      if (food.unit === 'kj') finalKcal = food.energy / 4.184;
-      
-      dailyLog.push({ 
-        id: Date.now(), name: `${food.name} (${eatAmt})`, meal: mealType,
-        cal: Math.round(finalKcal * ratio), pro: Math.round((food.pro * ratio) * 10) / 10, 
-        carb: Math.round((food.carb * ratio) * 10) / 10, fat: Math.round((food.fat * ratio) * 10) / 10,
-        sodium: Math.round(food.sodium * ratio)
-      });
-      
-      saveAndRefreshFood();
-      closeQuickModal();
-    }
-
-    function deleteSavedFood(index) {
-      if(confirm('确定删除快捷食物吗？')) {
-        savedFoods.splice(index, 1);
-        localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods));
-        renderSavedFoods();
-      }
-    }
-
-    function addFood() {
-      const name = document.getElementById('food-name').value || '未命名';
-      const mealType = document.getElementById('food-meal').value;
-      const baseAmt = parseFloat(document.getElementById('food-base').value) || 100;
-      
-      const eatAmtRaw = document.getElementById('food-eat').value;
-      let eatAmt = parseMathInput(eatAmtRaw);
-      if (isNaN(eatAmt)) eatAmt = baseAmt; 
-
-      const energyVal = parseFloat(document.getElementById('food-energy').value) || 0;
-      const energyUnit = document.getElementById('energy-unit').value; 
-      const basePro = parseFloat(document.getElementById('food-pro').value) || 0;
-      const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0;
-      const baseFat = parseFloat(document.getElementById('food-fat').value) || 0;
-      const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0;
-      
-      if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('请填写营养数据');
-
-      let kcalPerBase = energyVal;
-      if (energyUnit === 'kj') kcalPerBase = energyVal / 4.184;
-
-      if (document.getElementById('save-to-lib').checked) {
-        savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium });
-        localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods));
-        renderSavedFoods();
-        document.getElementById('save-to-lib').checked = false;
-      }
-
-      const ratio = eatAmt / baseAmt;
-      dailyLog.push({ 
-        id: Date.now(), name: `${name} (${eatAmt})`, meal: mealType,
-        cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, 
-        carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10,
-        sodium: Math.round(baseSodium * ratio)
-      });
-      
-      saveAndRefreshFood();
-      
-      document.getElementById('food-name').value = ''; document.getElementById('food-eat').value = '';
-      document.getElementById('food-energy').value = ''; document.getElementById('food-pro').value = '';
-      document.getElementById('food-carb').value = ''; document.getElementById('food-fat').value = '';
-      document.getElementById('food-sodium').value = ''; document.getElementById('food-base').value = '100'; 
-    }
-
-    function renderFoodLog() {
-      const list = document.getElementById('food-history');
-      list.innerHTML = '';
-      if (dailyLog.length === 0) document.getElementById('empty-food').style.display = 'block';
-      else {
-        document.getElementById('empty-food').style.display = 'none';
-        dailyLog.forEach(food => {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <div class="food-info">
-              <div class="food-name-row"><span class="meal-tag">${food.meal}</span><span class="food-name">${food.name}</span></div>
-              <span class="food-macros">🔥${food.cal}kcal | 🍗${food.pro}g | 🍚${food.carb}g | 🥑${food.fat}g | 🧂${food.sodium||0}mg</span>
-            </div>
-            <button class="btn-delete" onclick="deleteFood(${food.id})">删除</button>
-          `;
-          list.appendChild(li);
-        });
-      }
-    }
-
+    function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
+    function renderSavedFoods() { const area = document.getElementById('saved-foods-area'); const list = document.getElementById('saved-foods-list'); list.innerHTML = ''; if (savedFoods.length === 0) { area.style.display = 'none'; return; } area.style.display = 'block'; savedFoods.forEach((food, index) => { const chip = document.createElement('div'); chip.className = 'chip'; chip.innerHTML = `<span onclick="openQuickModal(${index})">🍔 ${food.name}</span><button class="chip-del" onclick="deleteSavedFood(${index})">×</button>`; list.appendChild(chip); }); }
+    function openQuickModal(index) { currentQuickIndex = index; const food = savedFoods[index]; document.getElementById('qm-title').innerText = `添加【${food.name}】`; document.getElementById('qm-base-info').innerText = `基准：${food.baseAmt} 克/份`; document.getElementById('qm-eat').value = ''; document.getElementById('qm-eat').placeholder = `不填默认按 ${food.baseAmt} 算`; document.getElementById('quick-modal-overlay').style.display = 'block'; document.getElementById('quick-modal').style.display = 'block'; }
+    function closeQuickModal() { document.getElementById('quick-modal-overlay').style.display = 'none'; document.getElementById('quick-modal').style.display = 'none'; currentQuickIndex = -1; }
+    function confirmQuickAdd() { if (currentQuickIndex === -1) return; const food = savedFoods[currentQuickIndex]; const eatAmtRaw = document.getElementById('qm-eat').value; let eatAmt = parseMathInput(eatAmtRaw); if (isNaN(eatAmt) || eatAmt <= 0) { if (eatAmtRaw.trim() === '') { eatAmt = food.baseAmt; } else { return alert('❌ 请输入有效的数字或算式！'); } } const mealType = document.getElementById('qm-meal').value; const ratio = eatAmt / food.baseAmt; let finalKcal = food.energy; if (food.unit === 'kj') finalKcal = food.energy / 4.184; dailyLog.push({ id: Date.now(), name: `${food.name} (${eatAmt})`, meal: mealType, cal: Math.round(finalKcal * ratio), pro: Math.round((food.pro * ratio) * 10) / 10, carb: Math.round((food.carb * ratio) * 10) / 10, fat: Math.round((food.fat * ratio) * 10) / 10, sodium: Math.round(food.sodium * ratio) }); saveAndRefreshFood(); closeQuickModal(); }
+    function deleteSavedFood(index) { if(confirm('确定删除吗？')) { savedFoods.splice(index, 1); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); } }
+    function addFood() { const name = document.getElementById('food-name').value || '未命名'; const mealType = document.getElementById('food-meal').value; const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; const eatAmtRaw = document.getElementById('food-eat').value; let eatAmt = parseMathInput(eatAmtRaw); if (isNaN(eatAmt)) eatAmt = baseAmt; const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; const energyUnit = document.getElementById('energy-unit').value; const basePro = parseFloat(document.getElementById('food-pro').value) || 0; const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('请填写数据'); let kcalPerBase = energyVal; if (energyUnit === 'kj') kcalPerBase = energyVal / 4.184; if (document.getElementById('save-to-lib').checked) { savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium }); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); document.getElementById('save-to-lib').checked = false; } const ratio = eatAmt / baseAmt; dailyLog.push({ id: Date.now(), name: `${name} (${eatAmt})`, meal: mealType, cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10, sodium: Math.round(baseSodium * ratio) }); saveAndRefreshFood(); document.getElementById('food-name').value = ''; document.getElementById('food-eat').value = ''; document.getElementById('food-energy').value = ''; document.getElementById('food-pro').value = ''; document.getElementById('food-carb').value = ''; document.getElementById('food-fat').value = ''; document.getElementById('food-sodium').value = ''; document.getElementById('food-base').value = '100'; }
+    function renderFoodLog() { const list = document.getElementById('food-history'); list.innerHTML = ''; if (dailyLog.length === 0) document.getElementById('empty-food').style.display = 'block'; else { document.getElementById('empty-food').style.display = 'none'; dailyLog.forEach(food => { const li = document.createElement('li'); li.innerHTML = `<div class="food-info"><div class="food-name-row"><span class="meal-tag">${food.meal}</span><span class="food-name">${food.name}</span></div><span class="food-macros">🔥${food.cal}kcal | 🍗${food.pro}g | 🍚${food.carb}g | 🥑${food.fat}g | 🧂${food.sodium||0}mg</span></div><button class="btn-delete" onclick="deleteFood(${food.id})">删除</button>`; list.appendChild(li); }); } }
     function deleteFood(id) { dailyLog = dailyLog.filter(f => f.id !== id); saveAndRefreshFood(); }
     function saveAndRefreshFood() { localStorage.setItem('recomp_daily_log_v2', JSON.stringify(dailyLog)); renderDashboard(); renderFoodLog(); }
-    function resetDaily() { if(confirm('清空今天饮食吗？\n注意：这不会影响历史归档数据。')) { dailyLog = []; saveAndRefreshFood(); } }
-
-    function renderWeightHistory() {
-      const list = document.getElementById('weight-history');
-      list.innerHTML = '';
-      weightLog.forEach((entry, index) => {
-        let diffStr = '<span style="color:#94a3b8;">-</span>';
-        if (index < weightLog.length - 1) {
-          const diff = (entry.weight - weightLog[index + 1].weight).toFixed(1);
-          if (diff > 0) diffStr = `<span style="color:#ef4444;">+${diff}kg</span>`;
-          else if (diff < 0) diffStr = `<span style="color:#10b981;">${diff}kg</span>`;
-        }
-        const li = document.createElement('li');
-        li.innerHTML = `<span><span class="text-sm" style="display:inline-block; width:45px;">${entry.date}</span> &nbsp; ${entry.weight.toFixed(1)} kg</span> ${diffStr}`;
-        list.appendChild(li);
-      });
-      updateChart(); 
-    }
-
-    function updateChart() {
-      const ctx = document.getElementById('weightChart').getContext('2d');
-      const recent7 = weightLog.slice(0, 7).reverse();
-      const labels = recent7.map(entry => entry.date);
-      const data = recent7.map(entry => entry.weight);
-      const minWeight = Math.min(...data) || 70;
-      const maxWeight = Math.max(...data) || 80;
-
-      if (chartInstance) {
-        chartInstance.data.labels = labels; chartInstance.data.datasets[0].data = data;
-        chartInstance.options.scales.y.suggestedMin = minWeight - 0.5; chartInstance.options.scales.y.suggestedMax = maxWeight + 0.5;
-        chartInstance.update();
-      } else {
-        chartInstance = new Chart(ctx, {
-          type: 'line',
-          data: { labels: labels, datasets: [{ label: '体重', data: data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { suggestedMin: minWeight - 0.5, suggestedMax: maxWeight + 0.5 } } }
-        });
-      }
-    }
-
-    function exportData() {
-      const data = {
-        profile: localStorage.getItem('recomp_profile_v4'),
-        activeDate: localStorage.getItem('recomp_active_date'),
-        dailyLog: localStorage.getItem('recomp_daily_log_v2'),
-        weights: localStorage.getItem('recomp_weights'),
-        savedFoods: localStorage.getItem('recomp_saved_foods_v2'),
-        summaries: localStorage.getItem('recomp_daily_summaries')
-      };
-      const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `recomp_backup_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.json`;
-      a.click();
-    }
-
-    function importData(event) {
-      const file = event.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const data = JSON.parse(e.target.result);
-          if(data.profile) localStorage.setItem('recomp_profile_v4', data.profile);
-          if(data.activeDate) localStorage.setItem('recomp_active_date', data.activeDate);
-          if(data.dailyLog) localStorage.setItem('recomp_daily_log_v2', data.dailyLog);
-          if(data.weights) localStorage.setItem('recomp_weights', data.weights);
-          if(data.savedFoods) localStorage.setItem('recomp_saved_foods_v2', data.savedFoods);
-          if(data.summaries) localStorage.setItem('recomp_daily_summaries', data.summaries);
-          alert('🎉 恢复成功！'); location.reload();
-        } catch(err) { alert('❌ 文件格式错误！'); }
-      };
-      reader.readAsText(file);
-    }
+    function resetDaily() { if(confirm('清空今天饮食吗？\n注意：不影响历史归档数据。')) { dailyLog = []; saveAndRefreshFood(); } }
+    function renderWeightHistory() { const list = document.getElementById('weight-history'); list.innerHTML = ''; weightLog.forEach((entry, index) => { let diffStr = '<span style="color:#94a3b8;">-</span>'; if (index < weightLog.length - 1) { const diff = (entry.weight - weightLog[index + 1].weight).toFixed(1); if (diff > 0) diffStr = `<span style="color:#ef4444;">+${diff}kg</span>`; else if (diff < 0) diffStr = `<span style="color:#10b981;">${diff}kg</span>`; } const li = document.createElement('li'); li.innerHTML = `<span><span class="text-sm" style="display:inline-block; width:45px;">${entry.date}</span> &nbsp; ${entry.weight.toFixed(1)} kg</span> ${diffStr}`; list.appendChild(li); }); updateChart(); }
+    function updateChart() { const ctx = document.getElementById('weightChart').getContext('2d'); const recent7 = weightLog.slice(0, 7).reverse(); const labels = recent7.map(entry => entry.date); const data = recent7.map(entry => entry.weight); const minWeight = Math.min(...data) || 70; const maxWeight = Math.max(...data) || 80; if (chartInstance) { chartInstance.data.labels = labels; chartInstance.data.datasets[0].data = data; chartInstance.options.scales.y.suggestedMin = minWeight - 0.5; chartInstance.options.scales.y.suggestedMax = maxWeight + 0.5; chartInstance.update(); } else { chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: '体重', data: data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { suggestedMin: minWeight - 0.5, suggestedMax: maxWeight + 0.5 } } } }); } }
+    function exportData() { const data = { profile: localStorage.getItem('recomp_profile_v4'), activeDate: localStorage.getItem('recomp_active_date'), dailyLog: localStorage.getItem('recomp_daily_log_v2'), weights: localStorage.getItem('recomp_weights'), savedFoods: localStorage.getItem('recomp_saved_foods_v2'), summaries: localStorage.getItem('recomp_daily_summaries') }; const blob = new Blob([JSON.stringify(data)], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `recomp_backup_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.json`; a.click(); }
+    function importData(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); if(data.profile) localStorage.setItem('recomp_profile_v4', data.profile); if(data.activeDate) localStorage.setItem('recomp_active_date', data.activeDate); if(data.dailyLog) localStorage.setItem('recomp_daily_log_v2', data.dailyLog); if(data.weights) localStorage.setItem('recomp_weights', data.weights); if(data.savedFoods) localStorage.setItem('recomp_saved_foods_v2', data.savedFoods); if(data.summaries) localStorage.setItem('recomp_daily_summaries', data.summaries); alert('🎉 恢复成功！'); location.reload(); } catch(err) { alert('❌ 格式错误！'); } }; reader.readAsText(file); }
   </script>
 </body>
 </html>
