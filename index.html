@@ -32,7 +32,7 @@
     
     .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .chip { background: #e0e7ff; color: #4338ca; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
-    .chip span { cursor: pointer; font-weight: 600;}
+    .chip span { cursor: pointer; font-weight: 600; display: flex; align-items: center;}
     .chip-del { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; padding: 0 0 0 8px; line-height: 1; cursor: pointer; width: auto;}
 
     .food-list, .weight-list { list-style: none; padding: 0; margin: 0; }
@@ -86,7 +86,7 @@
     </div>
     <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
 
-    <!-- 新增：智能米饭分配器 -->
+    <!-- 智能米饭分配器 -->
     <div id="rice-calculator" style="margin-top: 16px; background: #fff7ed; border-radius: 8px; padding: 12px; border: 1px dashed #fdba74;"></div>
   </div>
 
@@ -120,7 +120,7 @@
   <div class="card">
     <h2>📸 精准饮食记录</h2>
     <div id="saved-foods-area" style="display: none;">
-      <div class="text-sm" style="margin-bottom: 8px;">⭐️ 快捷添加 (点击记录)：</div>
+      <div class="text-sm" style="margin-bottom: 8px;">⭐️ 快捷食物库 (点击直接核对并添加)：</div>
       <div class="chip-container" id="saved-foods-list"></div>
     </div>
     <div class="grid-2">
@@ -144,7 +144,7 @@
       <input type="number" id="food-fat" placeholder="脂肪(g)">
       <input type="number" id="food-sodium" placeholder="钠(mg)">
     </div>
-    <label class="checkbox-wrap"><input type="checkbox" id="save-to-lib"> 同时存入“快捷食物库”</label>
+    <label class="checkbox-wrap"><input type="checkbox" id="save-to-lib"> 同时存入上方“快捷食物库”</label>
     <button onclick="addFood()">存入流水账</button>
   </div>
 
@@ -209,10 +209,11 @@
     </div>
   </div>
 
-  <!-- 快捷弹窗 (隐藏部分) -->
+  <!-- 快捷弹窗 -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
   <div class="modal" id="quick-modal">
     <h3 id="qm-title">添加食物</h3>
+    <!-- 升级：弹窗内展示具体的迷你营养成分表 -->
     <div class="modal-info" id="qm-base-info"></div>
     <label class="text-sm" style="color:var(--primary); font-weight:bold; display:block; margin-bottom:4px;">👇 本次吃多少？(必填)</label>
     <input type="text" id="qm-eat" placeholder="如：150 或 110*2" style="border: 2px solid var(--primary);">
@@ -314,7 +315,6 @@
       const t = getDynamicTargets();
       let sums = { cal: 0, pro: 0, carb: 0, fat: 0, sodium: 0 };
       
-      // 新增：记录各餐的碳水摄入量，用于米饭计算
       let mealCarbs = { '早餐': 0, '午餐': 0, '晚餐': 0, '加餐': 0 };
 
       dailyLog.forEach(food => { 
@@ -356,23 +356,14 @@
       document.getElementById('bar-carb').style.width = Math.min((sums.carb/t.carb)*100, 100) + '%';
       document.getElementById('bar-fat').style.width = Math.min((sums.fat/t.fat)*100, 100) + '%';
 
-      // ==========================================
-      // 【核心升级】：智能米饭熟重分配逻辑 (3:4)
-      // ==========================================
+      // 智能米饭熟重分配逻辑 (3:4)
       const riceEl = document.getElementById('rice-calculator');
       if (riceEl) {
-        // 1. 算出早/加餐吃掉的碳水，剩下都给午晚饭
         const carbPool = Math.max(0, t.carb - mealCarbs['早餐'] - mealCarbs['加餐']);
-        
-        // 2. 按 3:4 分配目标碳水
         const targetLunchCarb = carbPool * (3 / 7);
         const targetDinnerCarb = carbPool * (4 / 7);
-
-        // 3. 扣除午/晚餐已经吃掉的其他碳水（比如炒菜里的碳水），算出还能吃多少
         const neededLunchCarb = Math.max(0, targetLunchCarb - mealCarbs['午餐']);
         const neededDinnerCarb = Math.max(0, targetDinnerCarb - mealCarbs['晚餐']);
-
-        // 4. 换算熟米饭 (100g 熟米饭 ≈ 26g 碳水)
         const lunchRice = Math.round(neededLunchCarb / 0.26);
         const dinnerRice = Math.round(neededDinnerCarb / 0.26);
 
@@ -539,10 +530,84 @@
     }
 
     function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
-    function renderSavedFoods() { const area = document.getElementById('saved-foods-area'); const list = document.getElementById('saved-foods-list'); list.innerHTML = ''; if (savedFoods.length === 0) { area.style.display = 'none'; return; } area.style.display = 'block'; savedFoods.forEach((food, index) => { const chip = document.createElement('div'); chip.className = 'chip'; chip.innerHTML = `<span onclick="openQuickModal(${index})">🍔 ${food.name}</span><button class="chip-del" onclick="deleteSavedFood(${index})">×</button>`; list.appendChild(chip); }); }
-    function openQuickModal(index) { currentQuickIndex = index; const food = savedFoods[index]; document.getElementById('qm-title').innerText = `添加【${food.name}】`; document.getElementById('qm-base-info').innerText = `基准：${food.baseAmt} 克/份`; document.getElementById('qm-eat').value = ''; document.getElementById('qm-eat').placeholder = `不填默认按 ${food.baseAmt} 算`; document.getElementById('quick-modal-overlay').style.display = 'block'; document.getElementById('quick-modal').style.display = 'block'; }
+    
+    // ========== 升级：渲染快捷食物库时加入千卡显示 ==========
+    function renderSavedFoods() { 
+      const area = document.getElementById('saved-foods-area'); 
+      const list = document.getElementById('saved-foods-list'); 
+      list.innerHTML = ''; 
+      if (savedFoods.length === 0) { area.style.display = 'none'; return; } 
+      area.style.display = 'block'; 
+      savedFoods.forEach((food, index) => { 
+        // 算出热量用于直接展示
+        let finalKcal = food.energy;
+        if (food.unit === 'kj') finalKcal = Math.round(food.energy / 4.184);
+
+        const chip = document.createElement('div'); 
+        chip.className = 'chip'; 
+        chip.innerHTML = `
+          <span onclick="openQuickModal(${index})">
+            🍔 ${food.name} 
+            <span style="font-weight:normal; font-size:0.75rem; color:#6b7280; margin-left:4px;">(${finalKcal}kcal)</span>
+          </span>
+          <button class="chip-del" onclick="deleteSavedFood(${index})">×</button>
+        `; 
+        list.appendChild(chip); 
+      }); 
+    }
+    
+    // ========== 升级：弹窗内展示具体的迷你营养表 ==========
+    function openQuickModal(index) { 
+      currentQuickIndex = index; 
+      const food = savedFoods[index]; 
+      document.getElementById('qm-title').innerText = `添加【${food.name}】`; 
+      
+      let finalKcal = food.energy;
+      if (food.unit === 'kj') finalKcal = Math.round(food.energy / 4.184);
+
+      // 渲染弹窗营养表
+      document.getElementById('qm-base-info').innerHTML = `
+        <div style="font-weight:bold; margin-bottom:6px; color:#1e293b;">设定基准：${food.baseAmt} 克/份</div>
+        <div style="font-size:0.8rem; background:#f1f5f9; padding:8px; border-radius:6px; color:#475569;">
+          🔥 <b>${finalKcal}</b> kcal | 🍗 <b>${food.pro}</b> g | 🍚 <b>${food.carb}</b> g | 🥑 <b>${food.fat}</b> g
+        </div>
+      `;
+
+      document.getElementById('qm-eat').value = ''; 
+      document.getElementById('qm-eat').placeholder = `不填则按默认基准（${food.baseAmt}）计算`; 
+      document.getElementById('quick-modal-overlay').style.display = 'block'; 
+      document.getElementById('quick-modal').style.display = 'block'; 
+    }
+
     function closeQuickModal() { document.getElementById('quick-modal-overlay').style.display = 'none'; document.getElementById('quick-modal').style.display = 'none'; currentQuickIndex = -1; }
-    function confirmQuickAdd() { if (currentQuickIndex === -1) return; const food = savedFoods[currentQuickIndex]; const eatAmtRaw = document.getElementById('qm-eat').value; let eatAmt = parseMathInput(eatAmtRaw); if (isNaN(eatAmt) || eatAmt <= 0) { if (eatAmtRaw.trim() === '') { eatAmt = food.baseAmt; } else { return alert('❌ 请输入有效的数字或算式！'); } } const mealType = document.getElementById('qm-meal').value; const ratio = eatAmt / food.baseAmt; let finalKcal = food.energy; if (food.unit === 'kj') finalKcal = food.energy / 4.184; dailyLog.push({ id: Date.now(), name: `${food.name} (${eatAmt})`, meal: mealType, cal: Math.round(finalKcal * ratio), pro: Math.round((food.pro * ratio) * 10) / 10, carb: Math.round((food.carb * ratio) * 10) / 10, fat: Math.round((food.fat * ratio) * 10) / 10, sodium: Math.round(food.sodium * ratio) }); saveAndRefreshFood(); closeQuickModal(); }
+    
+    function confirmQuickAdd() { 
+      if (currentQuickIndex === -1) return; 
+      const food = savedFoods[currentQuickIndex]; 
+      const eatAmtRaw = document.getElementById('qm-eat').value; 
+      let eatAmt = parseMathInput(eatAmtRaw); 
+      
+      if (isNaN(eatAmt) || eatAmt <= 0) { 
+        if (eatAmtRaw.trim() === '') { eatAmt = food.baseAmt; } 
+        else { return alert('❌ 请输入有效的数字或算式！'); } 
+      } 
+      
+      const mealType = document.getElementById('qm-meal').value; 
+      const ratio = eatAmt / food.baseAmt; 
+      let finalKcal = food.energy; 
+      if (food.unit === 'kj') finalKcal = food.energy / 4.184; 
+      
+      dailyLog.push({ 
+        id: Date.now(), name: `${food.name} (${eatAmt})`, meal: mealType, 
+        cal: Math.round(finalKcal * ratio), pro: Math.round((food.pro * ratio) * 10) / 10, 
+        carb: Math.round((food.carb * ratio) * 10) / 10, fat: Math.round((food.fat * ratio) * 10) / 10, 
+        sodium: Math.round(food.sodium * ratio) 
+      }); 
+      
+      saveAndRefreshFood(); 
+      closeQuickModal(); 
+    }
+
     function deleteSavedFood(index) { if(confirm('确定删除吗？')) { savedFoods.splice(index, 1); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); } }
     function addFood() { const name = document.getElementById('food-name').value || '未命名'; const mealType = document.getElementById('food-meal').value; const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; const eatAmtRaw = document.getElementById('food-eat').value; let eatAmt = parseMathInput(eatAmtRaw); if (isNaN(eatAmt)) eatAmt = baseAmt; const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; const energyUnit = document.getElementById('energy-unit').value; const basePro = parseFloat(document.getElementById('food-pro').value) || 0; const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('请填写数据'); let kcalPerBase = energyVal; if (energyUnit === 'kj') kcalPerBase = energyVal / 4.184; if (document.getElementById('save-to-lib').checked) { savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium }); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); document.getElementById('save-to-lib').checked = false; } const ratio = eatAmt / baseAmt; dailyLog.push({ id: Date.now(), name: `${name} (${eatAmt})`, meal: mealType, cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10, sodium: Math.round(baseSodium * ratio) }); saveAndRefreshFood(); document.getElementById('food-name').value = ''; document.getElementById('food-eat').value = ''; document.getElementById('food-energy').value = ''; document.getElementById('food-pro').value = ''; document.getElementById('food-carb').value = ''; document.getElementById('food-fat').value = ''; document.getElementById('food-sodium').value = ''; document.getElementById('food-base').value = '100'; }
     function renderFoodLog() { const list = document.getElementById('food-history'); list.innerHTML = ''; if (dailyLog.length === 0) document.getElementById('empty-food').style.display = 'block'; else { document.getElementById('empty-food').style.display = 'none'; dailyLog.forEach(food => { const li = document.createElement('li'); li.innerHTML = `<div class="food-info"><div class="food-name-row"><span class="meal-tag">${food.meal}</span><span class="food-name">${food.name}</span></div><span class="food-macros">🔥${food.cal}kcal | 🍗${food.pro}g | 🍚${food.carb}g | 🥑${food.fat}g | 🧂${food.sodium||0}mg</span></div><button class="btn-delete" onclick="deleteFood(${food.id})">删除</button>`; list.appendChild(li); }); } }
