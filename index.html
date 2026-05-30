@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Recomp Tracker Ultimate</title>
+  <title>Recomp Tracker Universal</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -25,6 +25,7 @@
     /* 表单与按钮 */
     input, select { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; background:#fff;}
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
     .input-group { display: flex; gap: 0; margin-bottom: 12px; }
     .input-group input { margin-bottom: 0; border-right: none; border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .input-group select { margin-bottom: 0; width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; background: #f8fafc; color: #475569;}
@@ -58,30 +59,65 @@
 </head>
 <body>
 
+  <!-- 动态代谢监控 -->
   <div class="dynamic-panel" id="dynamic-metabolism-panel">
     🏃‍♂️ <b>动态代谢监控：</b><br>加载中...
   </div>
 
+  <!-- 身体资料与目标调节引擎 -->
   <div class="settings-panel">
-    <h2 style="border:none; padding:0; margin-bottom:12px;">⚙️ 碳水动态调节引擎</h2>
+    <h2 style="border:none; padding:0; margin-bottom:12px;">👤 身体数据与消耗引擎</h2>
+    
+    <!-- 新增：个人基础数据配置 -->
+    <div class="grid-3">
+      <div>
+        <label class="text-sm">性别</label>
+        <select id="profile-gender" onchange="saveProfile()" style="padding: 8px;">
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm">年龄</label>
+        <input type="number" id="profile-age" onchange="saveProfile()" style="padding: 8px;">
+      </div>
+      <div>
+        <label class="text-sm">身高(cm)</label>
+        <input type="number" id="profile-height" onchange="saveProfile()" style="padding: 8px;">
+      </div>
+    </div>
+
+    <!-- 新增：活动系数选择 -->
+    <div style="margin-bottom: 16px;">
+      <label class="text-sm" style="color:var(--primary); font-weight:bold;">今日活动系数 (动态决定总消耗)</label>
+      <select id="profile-activity" onchange="saveProfile()" style="border: 1px solid var(--primary);">
+        <option value="1.2">🛌 休息日 / 久坐几乎不动 (×1.2)</option>
+        <option value="1.375">🚶 轻度活动 / 基础抗阻训练 (×1.375)</option>
+        <option value="1.55">🏋️ 中高强度训练 / 体力工作 (×1.55)</option>
+      </select>
+    </div>
+
+    <hr style="border: 0; border-top: 1px dashed #fbbf24; margin: 12px 0;">
+
     <div class="grid-2" style="align-items: center; gap: 16px;">
       <div>
         <label class="text-sm">今日总热量目标 (kcal)</label>
-        <input type="number" id="target-cal-input" value="1900" onchange="changeTarget()" style="margin-bottom: 0; font-weight: bold; color: var(--primary);">
+        <input type="number" id="target-cal-input" onchange="changeTarget()" style="margin-bottom: 0; font-weight: bold; color: var(--primary);">
       </div>
       <div style="font-size: 0.85rem; color: #64748b; line-height: 1.5; background: #fef3c7; padding: 8px; border-radius: 8px;">
         🍗 蛋白: <b>160g</b> (固定)<br>
         🥑 脂肪: <b>60g</b> (固定)<br>
-        🍚 碳水: <b id="target-carb-display" style="color:var(--warning); font-size:1rem;">180</b> <b>g</b> (动态)
+        🍚 碳水: <b id="target-carb-display" style="color:var(--warning); font-size:1rem;">--</b> <b>g</b> (动态)
       </div>
     </div>
   </div>
 
+  <!-- 今日营养摄入仪表盘 -->
   <div class="card">
     <h2>📊 今日目标进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">重置今日</button></h2>
     
     <div class="progress-wrap">
-      <div class="progress-header"><span>🔥 热量 (kcal)</span> <span id="text-cal" class="stats">0 / 1900</span></div>
+      <div class="progress-header"><span>🔥 热量 (kcal)</span> <span id="text-cal" class="stats">0 / --</span></div>
       <div class="progress-bg"><div class="progress-fill bg-blue" id="bar-cal"></div></div>
     </div>
     <div class="progress-wrap">
@@ -89,7 +125,7 @@
       <div class="progress-bg"><div class="progress-fill bg-green" id="bar-pro"></div></div>
     </div>
     <div class="progress-wrap">
-      <div class="progress-header"><span>🍚 碳水化合物 (g)</span> <span id="text-carb" class="stats">0 / 180</span></div>
+      <div class="progress-header"><span>🍚 碳水化合物 (g)</span> <span id="text-carb" class="stats">0 / --</span></div>
       <div class="progress-bg"><div class="progress-fill bg-yellow" id="bar-carb"></div></div>
     </div>
     <div class="progress-wrap">
@@ -99,6 +135,7 @@
     <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
   </div>
 
+  <!-- 记录饮食 -->
   <div class="card">
     <h2>📸 精准饮食记录</h2>
     <div id="saved-foods-area" style="display: none;">
@@ -157,12 +194,14 @@
     <button onclick="addFood()">换算千卡并存入流水账</button>
   </div>
 
+  <!-- 流水账 -->
   <div class="card">
     <h2>📝 今日饮食流水账</h2>
     <ul class="food-list" id="food-history"></ul>
     <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
   </div>
 
+  <!-- 体重趋势 -->
   <div class="card">
     <h2>⚖️ 体重打卡与趋势</h2>
     <div class="grid-2" style="grid-template-columns: 1fr auto; margin-bottom: 16px;">
@@ -173,6 +212,7 @@
     <ul class="weight-list" id="weight-history"></ul>
   </div>
 
+  <!-- 数据安全与备份模块 -->
   <div class="card">
     <h2>💾 数据安全与备份</h2>
     <div class="text-sm" style="margin-bottom:12px;">当前数据保存在本地。为防止清理缓存导致丢失，请定期导出备份文件到手机。</div>
@@ -186,8 +226,8 @@
   </div>
 
   <script>
-    const AGE = 20; const HEIGHT = 178;
-    
+    // 默认配置提取为动态变量
+    let profile = JSON.parse(localStorage.getItem('recomp_profile')) || { gender: 'male', age: 20, height: 178, activity: 1.375 };
     let targets = JSON.parse(localStorage.getItem('recomp_targets_v3')) || { cal: 1900, pro: 160, carb: 180, fat: 60 };
     let dailyLog = JSON.parse(localStorage.getItem('recomp_daily_log_v2')) || [];
     let weightLog = JSON.parse(localStorage.getItem('recomp_weights')) || [];
@@ -195,10 +235,28 @@
     let chartInstance = null;
 
     window.onload = function() {
+      // 初始化个人资料 UI
+      document.getElementById('profile-gender').value = profile.gender;
+      document.getElementById('profile-age').value = profile.age;
+      document.getElementById('profile-height').value = profile.height;
+      document.getElementById('profile-activity').value = profile.activity;
+      
       document.getElementById('target-cal-input').value = targets.cal;
       document.getElementById('target-carb-display').innerText = targets.carb;
+      
       renderDashboard(); renderFoodLog(); renderWeightHistory(); renderSavedFoods(); updateDynamicMetabolism();
     };
+
+    // ========== 新增：保存与计算个人身体参数 ==========
+    function saveProfile() {
+      profile.gender = document.getElementById('profile-gender').value;
+      profile.age = parseInt(document.getElementById('profile-age').value) || 20;
+      profile.height = parseFloat(document.getElementById('profile-height').value) || 178;
+      profile.activity = parseFloat(document.getElementById('profile-activity').value) || 1.375;
+      
+      localStorage.setItem('recomp_profile', JSON.stringify(profile));
+      updateDynamicMetabolism(); // 资料变动，即刻触发代谢重算
+    }
 
     function parseMathInput(inputStr) {
       if (!inputStr) return NaN;
@@ -239,14 +297,25 @@
       document.getElementById('bar-fat').style.width = Math.min((sums.fat/targets.fat)*100, 100) + '%';
     }
 
+    // ========== 升级：引入男女动态公式 ==========
     function updateDynamicMetabolism() {
-      const currentWeight = weightLog.length > 0 ? weightLog[0].weight : 75;
-      const bmr = Math.round((10 * currentWeight) + (6.25 * HEIGHT) - (5 * AGE) + 5);
-      const tdee = Math.round(bmr * 1.375);
+      const currentWeight = weightLog.length > 0 ? weightLog[0].weight : 70; // 如果没打卡体重，默认按 70kg 算
+      let bmr = 0;
+      
+      // 使用 Mifflin-St Jeor 公式区分男女计算
+      if (profile.gender === 'male') {
+        bmr = Math.round((10 * currentWeight) + (6.25 * profile.height) - (5 * profile.age) + 5);
+      } else {
+        bmr = Math.round((10 * currentWeight) + (6.25 * profile.height) - (5 * profile.age) - 161);
+      }
+      
+      const tdee = Math.round(bmr * profile.activity);
       const deficit = tdee - targets.cal; 
+      
       document.getElementById('dynamic-metabolism-panel').innerHTML = `
-        🏃‍♂️ <b>动态代谢（基于 ${currentWeight.toFixed(1)}kg）：</b><br>
-        BMR: <b>${bmr}</b> kcal | TDEE: <b>${tdee}</b> kcal<br>
+        🏃‍♂️ <b>动态代谢监控（基于 ${currentWeight.toFixed(1)}kg）：</b><br>
+        当前基础代谢 (BMR): <b>${bmr}</b> kcal<br>
+        今日总消耗 (TDEE × ${profile.activity}): <b>${tdee}</b> kcal<br>
         当前目标摄入: <b>${targets.cal}</b> kcal | 预估缺口: <b style="color: ${deficit >= 300 ? '#166534' : '#b45309'}">${deficit}</b> kcal
       `;
     }
@@ -413,9 +482,10 @@
       }
     }
 
-    // ========== 数据备份与恢复逻辑 ==========
+    // ========== 数据备份与恢复逻辑（包含 Profile 适配） ==========
     function exportData() {
       const data = {
+        profile: localStorage.getItem('recomp_profile'),      // 确保导出最新的身体参数
         targets: localStorage.getItem('recomp_targets_v3'),
         dailyLog: localStorage.getItem('recomp_daily_log_v2'),
         weights: localStorage.getItem('recomp_weights'),
@@ -436,6 +506,7 @@
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
+          if(data.profile) localStorage.setItem('recomp_profile', data.profile);
           if(data.targets) localStorage.setItem('recomp_targets_v3', data.targets);
           if(data.dailyLog) localStorage.setItem('recomp_daily_log_v2', data.dailyLog);
           if(data.weights) localStorage.setItem('recomp_weights', data.weights);
