@@ -124,8 +124,8 @@
       <div class="chip-container" id="saved-foods-list"></div>
     </div>
     <div class="grid-2">
-      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：大米饭"></div>
-      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐">🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
+      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：速食鸭腿"></div>
+      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐" selected>🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
     </div>
     <div class="form-group">
       <div class="grid-2">
@@ -144,7 +144,22 @@
       <input type="number" id="food-fat" placeholder="脂肪(g)">
       <input type="number" id="food-sodium" placeholder="钠(mg)">
     </div>
-    <label class="checkbox-wrap"><input type="checkbox" id="save-to-lib"> 同时存入上方“快捷食物库”</label>
+    
+    <!-- 升级：双模引擎入库选择 -->
+    <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 16px;">
+      <label class="checkbox-wrap" style="margin-bottom:0;">
+        <input type="checkbox" id="save-to-lib" onchange="document.getElementById('lib-type-container').style.display = this.checked ? 'block' : 'none';">
+        ⭐️ 同时存入上方“快捷食物库”
+      </label>
+      <div id="lib-type-container" style="display:none; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+        <label class="text-sm" style="color:var(--primary); font-weight:bold;">选择存入类型 (决定快捷点击时的行为)：</label>
+        <select id="lib-food-type" style="margin-bottom:0; font-size:0.85rem; border: 1px solid var(--primary);">
+          <option value="fixed">📦 包装食品 (固定单份，如鸭腿/面包，点击默认吃1份)</option>
+          <option value="weigh" selected>⚖️ 散装食物 (如米饭/蔬菜，每次需自己填称重)</option>
+        </select>
+      </div>
+    </div>
+
     <button onclick="addFood()">存入流水账</button>
   </div>
 
@@ -209,13 +224,12 @@
     </div>
   </div>
 
-  <!-- 快捷弹窗 -->
+  <!-- 快捷弹窗 (双模引擎) -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
   <div class="modal" id="quick-modal">
     <h3 id="qm-title">添加食物</h3>
-    <!-- 升级：弹窗内展示具体的迷你营养成分表 -->
     <div class="modal-info" id="qm-base-info"></div>
-    <label class="text-sm" style="color:var(--primary); font-weight:bold; display:block; margin-bottom:4px;">👇 本次吃多少？(必填)</label>
+    <label class="text-sm" id="qm-eat-label" style="color:var(--primary); font-weight:bold; display:block; margin-bottom:4px;">👇 本次吃多少？(必填)</label>
     <input type="text" id="qm-eat" placeholder="如：150 或 110*2" style="border: 2px solid var(--primary);">
     <label class="text-sm" style="display:block; margin-bottom:4px;">这是哪一餐？</label>
     <select id="qm-meal" style="margin-bottom: 24px;">
@@ -356,7 +370,6 @@
       document.getElementById('bar-carb').style.width = Math.min((sums.carb/t.carb)*100, 100) + '%';
       document.getElementById('bar-fat').style.width = Math.min((sums.fat/t.fat)*100, 100) + '%';
 
-      // 智能米饭熟重分配逻辑 (3:4)
       const riceEl = document.getElementById('rice-calculator');
       if (riceEl) {
         const carbPool = Math.max(0, t.carb - mealCarbs['早餐'] - mealCarbs['加餐']);
@@ -531,7 +544,7 @@
 
     function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
     
-    // ========== 升级：渲染快捷食物库时加入千卡显示 ==========
+    // ========== 双模引擎更新：渲染带有类型图标和千卡的快捷库 ==========
     function renderSavedFoods() { 
       const area = document.getElementById('saved-foods-area'); 
       const list = document.getElementById('saved-foods-list'); 
@@ -539,15 +552,16 @@
       if (savedFoods.length === 0) { area.style.display = 'none'; return; } 
       area.style.display = 'block'; 
       savedFoods.forEach((food, index) => { 
-        // 算出热量用于直接展示
         let finalKcal = food.energy;
         if (food.unit === 'kj') finalKcal = Math.round(food.energy / 4.184);
 
+        const icon = food.type === 'fixed' ? '📦' : (food.type === 'weigh' ? '⚖️' : '🍔');
+        
         const chip = document.createElement('div'); 
         chip.className = 'chip'; 
         chip.innerHTML = `
           <span onclick="openQuickModal(${index})">
-            🍔 ${food.name} 
+            ${icon} ${food.name} 
             <span style="font-weight:normal; font-size:0.75rem; color:#6b7280; margin-left:4px;">(${finalKcal}kcal)</span>
           </span>
           <button class="chip-del" onclick="deleteSavedFood(${index})">×</button>
@@ -556,25 +570,37 @@
       }); 
     }
     
-    // ========== 升级：弹窗内展示具体的迷你营养表 ==========
+    // ========== 弹窗：动态加载迷你营养表与自动适配填充 ==========
     function openQuickModal(index) { 
       currentQuickIndex = index; 
       const food = savedFoods[index]; 
+      const isFixed = food.type === 'fixed';
+      
       document.getElementById('qm-title').innerText = `添加【${food.name}】`; 
       
       let finalKcal = food.energy;
       if (food.unit === 'kj') finalKcal = Math.round(food.energy / 4.184);
 
-      // 渲染弹窗营养表
       document.getElementById('qm-base-info').innerHTML = `
-        <div style="font-weight:bold; margin-bottom:6px; color:#1e293b;">设定基准：${food.baseAmt} 克/份</div>
+        <div style="font-weight:bold; margin-bottom:6px; color:#1e293b;">${isFixed ? '📦 单份规格' : '⚖️ 设定基准'}：${food.baseAmt} 克/份</div>
         <div style="font-size:0.8rem; background:#f1f5f9; padding:8px; border-radius:6px; color:#475569;">
           🔥 <b>${finalKcal}</b> kcal | 🍗 <b>${food.pro}</b> g | 🍚 <b>${food.carb}</b> g | 🥑 <b>${food.fat}</b> g
         </div>
       `;
 
-      document.getElementById('qm-eat').value = ''; 
-      document.getElementById('qm-eat').placeholder = `不填则按默认基准（${food.baseAmt}）计算`; 
+      const eatLabel = document.getElementById('qm-eat-label');
+      const eatInput = document.getElementById('qm-eat');
+      
+      if (isFixed) {
+          eatLabel.innerText = '👇 吃了几份/包/个？(默认 1)';
+          eatInput.value = '1';
+          eatInput.placeholder = '如：1 或 0.5';
+      } else {
+          eatLabel.innerText = '👇 本次称了多少克？(必填)';
+          eatInput.value = '';
+          eatInput.placeholder = '如：150 或 110*2';
+      }
+      
       document.getElementById('quick-modal-overlay').style.display = 'block'; 
       document.getElementById('quick-modal').style.display = 'block'; 
     }
@@ -584,21 +610,27 @@
     function confirmQuickAdd() { 
       if (currentQuickIndex === -1) return; 
       const food = savedFoods[currentQuickIndex]; 
+      const isFixed = food.type === 'fixed';
       const eatAmtRaw = document.getElementById('qm-eat').value; 
-      let eatAmt = parseMathInput(eatAmtRaw); 
       
-      if (isNaN(eatAmt) || eatAmt <= 0) { 
-        if (eatAmtRaw.trim() === '') { eatAmt = food.baseAmt; } 
+      let parsedVal = parseMathInput(eatAmtRaw); 
+      if (isNaN(parsedVal) || parsedVal <= 0) { 
+        if (eatAmtRaw.trim() === '') { parsedVal = isFixed ? 1 : food.baseAmt; } 
         else { return alert('❌ 请输入有效的数字或算式！'); } 
       } 
       
       const mealType = document.getElementById('qm-meal').value; 
+      const eatAmt = isFixed ? (parsedVal * food.baseAmt) : parsedVal;
       const ratio = eatAmt / food.baseAmt; 
+      
       let finalKcal = food.energy; 
       if (food.unit === 'kj') finalKcal = food.energy / 4.184; 
       
+      // 流水账显示优化：包装食品显示“x份(xg)”，散装显示“xg”
+      const displayAmt = isFixed ? `${parsedVal}份(${eatAmt}g)` : `${eatAmt}g`;
+
       dailyLog.push({ 
-        id: Date.now(), name: `${food.name} (${eatAmt})`, meal: mealType, 
+        id: Date.now(), name: `${food.name} [${displayAmt}]`, meal: mealType, 
         cal: Math.round(finalKcal * ratio), pro: Math.round((food.pro * ratio) * 10) / 10, 
         carb: Math.round((food.carb * ratio) * 10) / 10, fat: Math.round((food.fat * ratio) * 10) / 10, 
         sodium: Math.round(food.sodium * ratio) 
@@ -609,7 +641,41 @@
     }
 
     function deleteSavedFood(index) { if(confirm('确定删除吗？')) { savedFoods.splice(index, 1); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); } }
-    function addFood() { const name = document.getElementById('food-name').value || '未命名'; const mealType = document.getElementById('food-meal').value; const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; const eatAmtRaw = document.getElementById('food-eat').value; let eatAmt = parseMathInput(eatAmtRaw); if (isNaN(eatAmt)) eatAmt = baseAmt; const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; const energyUnit = document.getElementById('energy-unit').value; const basePro = parseFloat(document.getElementById('food-pro').value) || 0; const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('请填写数据'); let kcalPerBase = energyVal; if (energyUnit === 'kj') kcalPerBase = energyVal / 4.184; if (document.getElementById('save-to-lib').checked) { savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium }); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); document.getElementById('save-to-lib').checked = false; } const ratio = eatAmt / baseAmt; dailyLog.push({ id: Date.now(), name: `${name} (${eatAmt})`, meal: mealType, cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10, sodium: Math.round(baseSodium * ratio) }); saveAndRefreshFood(); document.getElementById('food-name').value = ''; document.getElementById('food-eat').value = ''; document.getElementById('food-energy').value = ''; document.getElementById('food-pro').value = ''; document.getElementById('food-carb').value = ''; document.getElementById('food-fat').value = ''; document.getElementById('food-sodium').value = ''; document.getElementById('food-base').value = '100'; }
+    
+    function addFood() { 
+      const name = document.getElementById('food-name').value || '未命名'; 
+      const mealType = document.getElementById('food-meal').value; 
+      const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; 
+      const eatAmtRaw = document.getElementById('food-eat').value; 
+      let eatAmt = parseMathInput(eatAmtRaw); 
+      if (isNaN(eatAmt)) eatAmt = baseAmt; 
+      
+      const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; 
+      const energyUnit = document.getElementById('energy-unit').value; 
+      const basePro = parseFloat(document.getElementById('food-pro').value) || 0; 
+      const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; 
+      const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; 
+      const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; 
+      
+      if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('请填写数据'); 
+      let kcalPerBase = energyVal; if (energyUnit === 'kj') kcalPerBase = energyVal / 4.184; 
+      
+      if (document.getElementById('save-to-lib').checked) { 
+        const libType = document.getElementById('lib-food-type').value;
+        savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium, type: libType }); 
+        localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); 
+        renderSavedFoods(); 
+        document.getElementById('save-to-lib').checked = false; 
+        document.getElementById('lib-type-container').style.display = 'none';
+      } 
+      
+      const ratio = eatAmt / baseAmt; 
+      dailyLog.push({ id: Date.now(), name: `${name} [${eatAmt}g]`, meal: mealType, cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10, sodium: Math.round(baseSodium * ratio) }); 
+      saveAndRefreshFood(); 
+      
+      document.getElementById('food-name').value = ''; document.getElementById('food-eat').value = ''; document.getElementById('food-energy').value = ''; document.getElementById('food-pro').value = ''; document.getElementById('food-carb').value = ''; document.getElementById('food-fat').value = ''; document.getElementById('food-sodium').value = ''; document.getElementById('food-base').value = '100'; 
+    }
+    
     function renderFoodLog() { const list = document.getElementById('food-history'); list.innerHTML = ''; if (dailyLog.length === 0) document.getElementById('empty-food').style.display = 'block'; else { document.getElementById('empty-food').style.display = 'none'; dailyLog.forEach(food => { const li = document.createElement('li'); li.innerHTML = `<div class="food-info"><div class="food-name-row"><span class="meal-tag">${food.meal}</span><span class="food-name">${food.name}</span></div><span class="food-macros">🔥${food.cal}kcal | 🍗${food.pro}g | 🍚${food.carb}g | 🥑${food.fat}g | 🧂${food.sodium||0}mg</span></div><button class="btn-delete" onclick="deleteFood(${food.id})">删除</button>`; list.appendChild(li); }); } }
     function deleteFood(id) { dailyLog = dailyLog.filter(f => f.id !== id); saveAndRefreshFood(); }
     function saveAndRefreshFood() { localStorage.setItem('recomp_daily_log_v2', JSON.stringify(dailyLog)); renderDashboard(); renderFoodLog(); }
