@@ -27,8 +27,10 @@
     .input-group { display: flex; gap: 0; margin-bottom: 12px; }
     .input-group input { margin-bottom: 0; border-right: none; border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .input-group select { margin-bottom: 0; width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; background: #f8fafc; color: #475569;}
-    button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; transition: all 0.2s;}
+    button:active { transform: scale(0.98); }
     .btn-outline { background: transparent; border: 1px solid #94a3b8; color: #64748b; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; }
+    .btn-main-action { font-size: 1.15rem; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px;}
     
     .chip-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .chip { background: #e0e7ff; color: #4338ca; padding: 6px 12px; border-radius: 16px; font-size: 0.85rem; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
@@ -52,9 +54,11 @@
     input[type="checkbox"] { width: 18px; height: 18px; margin: 0;}
     .chart-container { position: relative; height: 200px; width: 100%; margin-bottom: 16px; }
 
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999; backdrop-filter: blur(2px); }
-    .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 350px; background: #fff; border-radius: 16px; padding: 24px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .modal h3 { margin: 0 0 8px 0; color: var(--primary); font-size: 1.2rem; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 999; backdrop-filter: blur(3px); }
+    .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92%; max-width: 400px; max-height: 85vh; overflow-y: auto; background: #fff; border-radius: 16px; padding: 24px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+    .modal::-webkit-scrollbar { width: 6px; }
+    .modal::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .modal h3 { margin: 0; color: var(--primary); font-size: 1.2rem; }
     .modal .modal-info { font-size: 0.85rem; color: #64748b; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; }
     
     .review-box { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
@@ -64,6 +68,9 @@
 </head>
 <body>
 
+  <!-- ==================== 主屏幕区域 ==================== -->
+
+  <!-- 1. 今日动态进度 (置顶) -->
   <div class="card">
     <h2>📊 今日动态进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">清空重记</button></h2>
     <div class="progress-wrap">
@@ -76,7 +83,7 @@
       <div class="progress-bg"><div class="progress-fill bg-green" id="bar-pro"></div></div>
     </div>
     <div class="progress-wrap">
-      <div class="progress-header"><span>🍚 碳水化合物 (g)</span> <span id="text-carb" class="stats">0 / --</span></div>
+      <div class="progress-header"><span>🍚 碳水 (g)</span> <span id="text-carb" class="stats">0 / --</span></div>
       <div class="progress-bg"><div class="progress-fill bg-yellow" id="bar-carb"></div></div>
     </div>
     <div class="progress-wrap">
@@ -85,9 +92,23 @@
     </div>
     <div class="text-sm" style="text-align: right; color: #8b5cf6; font-weight: bold; margin-top: 8px;">🧂 今日总钠摄入: <span id="text-sodium">0</span> mg</div>
 
+    <!-- 智能米饭分配器 -->
     <div id="rice-calculator" style="margin-top: 16px; background: #fff7ed; border-radius: 8px; padding: 12px; border: 1px dashed #fdba74;"></div>
   </div>
 
+  <!-- 2. 核心操作：大大的记一笔按钮 -->
+  <button class="btn-main-action" onclick="openMainAddModal()">
+    ➕ 记一笔饮食 / 添加食物
+  </button>
+
+  <!-- 3. 饮食流水账 -->
+  <div class="card">
+    <h2>📝 今日饮食流水账</h2>
+    <ul class="food-list" id="food-history"></ul>
+    <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦，点击上方按钮记录</div>
+  </div>
+
+  <!-- 4. 7天闭环复盘 -->
   <div class="card" style="background: #fdfaf5; border: 1px solid #fde68a;">
     <h2>📈 近7日闭环数据稽查</h2>
     <div class="grid-3" style="gap: 8px; margin-bottom: 12px;">
@@ -107,68 +128,19 @@
         <div class="text-sm">kcal</div>
       </div>
     </div>
+    <!-- AI 偏差分析结论框 -->
     <div id="ai-analysis-container"></div>
     <ul class="weight-list" id="weekly-history-list" style="margin-top: 16px;"></ul>
   </div>
 
+  <!-- 5. 32天三分化训练轨道引擎 -->
   <div class="card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-    <h2>🗓️ 32天三分化训练引擎 <button class="btn-outline" onclick="resetCycle()" style="width:auto; border-color:#166534; color:#166534;">重置回第1天</button></h2>
+    <h2>🗓️ 32天三分化训练引擎 <button class="btn-outline" onclick="resetCycle()" style="width:auto; border-color:#166534; color:#166534;">重置第1天</button></h2>
     <div id="cycle-info-panel"></div>
     <button id="cycle-delay-btn" onclick="toggleDelayCycle()" style="margin-top:12px; padding: 10px; font-size: 0.95rem;"></button>
   </div>
 
-  <div class="card">
-    <h2>📸 精准饮食记录</h2>
-    <div id="saved-foods-area" style="display: none;">
-      <div class="text-sm" style="margin-bottom: 8px;">⭐️ 快捷食物库 (点击直接添加)：</div>
-      <div class="chip-container" id="saved-foods-list"></div>
-    </div>
-    <div class="grid-2">
-      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：速食鸭腿"></div>
-      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐" selected>🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
-    </div>
-    <div class="form-group">
-      <div class="grid-2">
-        <div><label class="text-sm" id="food-base-label">营养表基准(每多少g/ml)</label><input type="number" id="food-base" value="100"></div>
-        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;" id="food-eat-label">本次记录重量(g)</label><input type="text" id="food-eat" placeholder="仅存快捷库时可不填"></div>
-      </div>
-    </div>
-    <label class="text-sm">👇 包装袋上的五大项营养数据：</label>
-    <div class="input-group">
-      <input type="number" id="food-energy" placeholder="能量数值">
-      <select id="energy-unit"><option value="kj">千焦(kJ)</option><option value="kcal">千卡(kcal)</option></select>
-    </div>
-    <div class="grid-2">
-      <input type="number" id="food-pro" placeholder="蛋白质(g)">
-      <input type="number" id="food-carb" placeholder="碳水(g)">
-      <input type="number" id="food-fat" placeholder="脂肪(g)">
-      <input type="number" id="food-sodium" placeholder="钠(mg)">
-    </div>
-    
-    <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px dashed #bbf7d0; margin-bottom: 16px;">
-      <label class="text-sm" style="color:#166534; font-weight:bold; margin-bottom: 8px; display: block;">⭐️ 快捷食物库选项 (批量建库时使用)</label>
-      <select id="lib-food-type" onchange="onLibTypeChange(this.value)" style="margin-bottom:8px; font-size:0.85rem; border: 1px solid #bbf7d0; background: #fff;">
-        <option value="weigh" selected>⚖️ 散装食物 (按 克 计，随吃随称)</option>
-        <option value="fixed">📦 包装食品 (按 包/份 计，需下填单件净重)</option>
-      </select>
-      <div id="net-weight-box" style="display:none; margin-bottom:12px;">
-        <input type="number" id="food-net-weight" placeholder="👉 请输入该包装单件净含量 (如 110g)" style="border: 1px solid #f97316; margin-bottom:0; font-size:0.85rem;">
-      </div>
-      <div class="grid-2" style="gap: 8px;">
-        <button class="btn-outline" onclick="saveFoodToLibOnly()" style="border-color: #10b981; color: #166534; background: #fff; padding: 10px;">➕ 仅存为快捷模板</button>
-        <button class="btn-outline" onclick="addFood(true)" style="border-color: #3b82f6; color: #1d4ed8; background: #fff; padding: 10px;">📝 记录并存入模板</button>
-      </div>
-    </div>
-
-    <button onclick="addFood(false)" style="background: var(--primary); font-size: 1.1rem; padding: 14px;">📝 仅记入今日流水账</button>
-  </div>
-
-  <div class="card">
-    <h2>📝 今日饮食流水账</h2>
-    <ul class="food-list" id="food-history"></ul>
-    <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
-  </div>
-
+  <!-- 6. 体重打卡 -->
   <div class="card">
     <h2>⚖️ 体重与腰围打卡</h2>
     <div class="grid-3" style="grid-template-columns: 1fr 1fr auto; margin-bottom: 16px;">
@@ -180,6 +152,7 @@
     <ul class="weight-list" id="weight-history"></ul>
   </div>
 
+  <!-- 7. 引擎设置 -->
   <div class="settings-panel" style="background: #eef2ff; border-color: #c7d2fe;">
     <h2>🤖 个人资料与目标设置</h2>
     <div class="grid-3">
@@ -207,18 +180,81 @@
     </div>
   </div>
 
+  <!-- 8. 数据备份 -->
   <div class="card">
     <h2>💾 数据安全与备份</h2>
     <div class="grid-2">
-      <button onclick="exportData()" style="background: #10b981;">⬇️ 导出备份 (JSON)</button>
+      <button onclick="exportData()" style="background: #10b981;">⬇️ 导出备份</button>
       <label style="background: transparent; border: 2px solid #3b82f6; color: #3b82f6; padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: bold; text-align: center; cursor: pointer; margin: 0; box-sizing: border-box;">
         ⬆️ 恢复数据<input type="file" accept=".json" id="import-file" style="display:none;" onchange="importData(event)">
       </label>
     </div>
   </div>
 
+
+  <!-- ==================== 模态框收纳区域 ==================== -->
+
+  <!-- A. 二级主界面：综合添加食物弹窗 (新) -->
+  <div class="modal-overlay" id="main-add-overlay" onclick="closeMainAddModal()"></div>
+  <div class="modal" id="main-add-modal">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h3>🍔 添加饮食记录</h3>
+      <button onclick="closeMainAddModal()" style="background:transparent; color:#94a3b8; width:auto; padding:0; font-size:1.5rem; line-height:1; font-weight:normal;">×</button>
+    </div>
+
+    <!-- 快捷食物库区域 -->
+    <div id="saved-foods-area" style="display: none; margin-bottom: 16px;">
+      <div class="text-sm" style="margin-bottom: 8px; font-weight:bold; color:var(--primary);">⭐️ 从快捷食物库选择 (点击添加)：</div>
+      <div class="chip-container" id="saved-foods-list"></div>
+      <hr style="border:none; border-top:1px dashed #cbd5e1; margin:16px 0;">
+    </div>
+
+    <!-- 手工录入表单区域 -->
+    <div class="text-sm" style="margin-bottom: 12px; font-weight:bold; color:var(--text);">✍️ 或者手工录入新食物：</div>
+    <div class="grid-2">
+      <div><label class="text-sm">食物名称</label><input type="text" id="food-name" placeholder="例如：速食鸭腿"></div>
+      <div><label class="text-sm">就餐时段</label><select id="food-meal"><option value="早餐">🌅 早餐</option><option value="午餐" selected>🍱 午餐</option><option value="晚餐">🍽️ 晚餐</option><option value="加餐">🍎 加餐</option></select></div>
+    </div>
+    <div class="form-group">
+      <div class="grid-2">
+        <div><label class="text-sm" id="food-base-label">基准(每多少g/ml)</label><input type="number" id="food-base" value="100"></div>
+        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;">本次食用重量(g)</label><input type="text" id="food-eat" placeholder="仅存模板可不填"></div>
+      </div>
+    </div>
+    <label class="text-sm">👇 营养成分表数据：</label>
+    <div class="input-group">
+      <input type="number" id="food-energy" placeholder="能量数值">
+      <select id="energy-unit"><option value="kj">千焦(kJ)</option><option value="kcal">千卡(kcal)</option></select>
+    </div>
+    <div class="grid-2">
+      <input type="number" id="food-pro" placeholder="蛋白质(g)">
+      <input type="number" id="food-carb" placeholder="碳水(g)">
+      <input type="number" id="food-fat" placeholder="脂肪(g)">
+      <input type="number" id="food-sodium" placeholder="钠(mg)">
+    </div>
+    
+    <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px dashed #bbf7d0; margin-bottom: 16px;">
+      <label class="text-sm" style="color:#166534; font-weight:bold; margin-bottom: 8px; display: block;">⭐️ 存入快捷库选项</label>
+      <select id="lib-food-type" onchange="onLibTypeChange(this.value)" style="margin-bottom:8px; font-size:0.85rem; border: 1px solid #bbf7d0; background: #fff;">
+        <option value="weigh" selected>⚖️ 散装食物 (按克计，随吃随称)</option>
+        <option value="fixed">📦 包装食品 (按包/份计，需下填单件净重)</option>
+      </select>
+      <div id="net-weight-box" style="display:none; margin-bottom:12px;">
+        <input type="number" id="food-net-weight" placeholder="👉 请输入该包装单件净重(g)" style="border: 1px solid #f97316; margin-bottom:0; font-size:0.85rem;">
+      </div>
+      <div class="grid-2" style="gap: 8px;">
+        <button class="btn-outline" onclick="saveFoodToLibOnly()" style="border-color: #10b981; color: #166534; background: #fff; padding: 10px;">➕ 仅存为快捷模板</button>
+        <button class="btn-outline" onclick="addFood(true)" style="border-color: #3b82f6; color: #1d4ed8; background: #fff; padding: 10px;">📝 记录并存入模板</button>
+      </div>
+    </div>
+
+    <button onclick="addFood(false)" style="background: var(--primary); font-size: 1.1rem; padding: 14px;">📝 仅记入今日流水账</button>
+  </div>
+
+
+  <!-- B. 快捷添加弹窗 (双模换算，从快捷库点击时弹出) -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
-  <div class="modal" id="quick-modal">
+  <div class="modal" id="quick-modal" style="z-index: 1005;">
     <h3 id="qm-title">添加食物</h3>
     <div class="modal-info" id="qm-base-info"></div>
     <label class="text-sm" id="qm-eat-label" style="color:var(--primary); font-weight:bold; display:block; margin-bottom:4px;">👇 本次吃多少？(必填)</label>
@@ -247,11 +283,24 @@
     let chartInstance = null;
     let currentQuickIndex = -1; 
 
-    // ========== UI 交互逻辑 ==========
+    // ========== 弹窗控制逻辑 ==========
+    function openMainAddModal() {
+       document.getElementById('main-add-overlay').style.display = 'block';
+       document.getElementById('main-add-modal').style.display = 'block';
+       // 确保每次打开时快捷食物库是最新的
+       renderSavedFoods();
+    }
+    
+    function closeMainAddModal() {
+       document.getElementById('main-add-overlay').style.display = 'none';
+       document.getElementById('main-add-modal').style.display = 'none';
+    }
+
     function onLibTypeChange(value) {
        document.getElementById('net-weight-box').style.display = value === 'fixed' ? 'block' : 'none';
     }
 
+    // ========== 引擎与后台逻辑 ==========
     function getCycleInfo(index) {
        const block = Math.floor(index / 8);
        const dayOfBlock = index % 8;
@@ -325,7 +374,7 @@
       document.getElementById('profile-gender').value = profile.gender;
       document.getElementById('profile-age').value = profile.age;
       document.getElementById('profile-height').value = profile.height;
-      renderDashboard(); renderCyclePanel(); renderFoodLog(); renderWeightHistory(); renderSavedFoods(); renderWeeklyReview();
+      renderDashboard(); renderCyclePanel(); renderFoodLog(); renderWeightHistory(); renderWeeklyReview();
     };
 
     function renderCyclePanel() {
@@ -447,10 +496,17 @@
              aiBox.innerHTML = `<div class="ai-guard-box" style="background:#f5f3ff; border:1px solid #c4b5fd; color:#5b21b6;">🌟 <b>AI 终极判定：完美的身体重组！</b><br>体重基本持平，但腰围缩减了 <b>${Math.abs(waistDiff).toFixed(1)} cm</b>！说明长肌同时狠狠掉了脂肪！</div>`;
           } else if (realDeficit > 150 && weightDiff > 0) {
             aiBox.innerHTML = `<div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">💡 <b>AI 数据稽查：漏记与储水警报！</b><br>日均有缺口实际却重了，请严查隐形炒菜油、零食漏记，或者刚重训完肌肉在严重锁水。</div>`;
+          } else if (realDeficit > 150 && weightDiff > -0.2 && weightDiff <= 0) {
+            aiBox.innerHTML = `<div class="ai-guard-box" style="background:#fffbeb; border:1px solid #fde68a; color:#92400e;">💡 <b>AI 数据稽查：平台期或轻微漏记</b><br>理论应减实际无明显下降。若无生理状态干扰，请严抓称重。</div>`;
           } else if (realDeficit > 100 && weightDiff <= -0.2) {
             aiBox.innerHTML = `<div class="ai-guard-box" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;">🎉 <b>AI 数据稽查：严格执行，稳步减脂中！</b></div>`;
+          } else if (realDeficit < -150 && weightDiff < 0) {
+             aiBox.innerHTML = `<div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">💡 <b>AI 数据稽查：热量高估警报！</b><br>日均盈余，但反掉了。<br>消耗估算偏低或高估了摄入量！</div>`;
           }
+        } else {
+          aiBox.innerHTML = `<div class="text-sm" style="margin-top: 10px; color: #94a3b8; text-align: center;">(累积满 5 天记录后，AI 将自动分析闭环误差)</div>`;
         }
+
         recentSummaries.forEach(sum => {
           const li = document.createElement('li'); const diff = sum.tdee - sum.consumed;
           li.innerHTML = `<span><span class="text-sm" style="display:inline-block; width:45px;">${sum.date}</span> 摄入 <b>${sum.consumed}</b> / 消耗 ${sum.tdee}</span>${diff >= 0 ? `<span style="color:#10b981;">缺口 ${diff}</span>` : `<span style="color:#ef4444;">盈余 ${Math.abs(diff)}</span>`}`;
@@ -479,9 +535,9 @@
       renderWeightHistory(); renderDashboard(); renderWeeklyReview();
     }
 
-    // ========== 核心：分离存储与记录逻辑 ==========
     function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
     
+    // ========== 渲染快捷食物库 (在主弹窗内) ==========
     function renderSavedFoods() { 
       const area = document.getElementById('saved-foods-area'); const list = document.getElementById('saved-foods-list');
       list.innerHTML = ''; if (savedFoods.length === 0) { area.style.display = 'none'; return; }
@@ -493,13 +549,17 @@
         const chip = document.createElement('div'); chip.className = 'chip'; 
         chip.innerHTML = `
           <span onclick="openQuickModal(${index})">${icon} ${food.name}${specText} <span style="font-weight:normal; font-size:0.75rem; color:#6b7280; margin-left:4px;">(${Math.round(finalKcal)}kcal/${food.baseAmt}g)</span></span>
-          <button class="chip-del" onclick="deleteSavedFood(${index})">×</button>
+          <button class="chip-del" onclick="deleteSavedFood(${index}); event.stopPropagation();">×</button>
         `; 
         list.appendChild(chip); 
       }); 
     }
     
+    // ========== 点击快捷库芯片 -> 呼出数量输入弹窗 ==========
     function openQuickModal(index) { 
+      // 关掉主弹窗，层级才干净
+      closeMainAddModal();
+
       currentQuickIndex = index; const food = savedFoods[index]; const isFixed = food.type === 'fixed';
       document.getElementById('qm-title').innerText = `快捷添加【${food.name}】`; 
       let finalKcal = food.energy; if (food.unit === 'kj') finalKcal = food.energy / 4.184;
@@ -546,7 +606,7 @@
     function closeQuickModal() { document.getElementById('quick-modal-overlay').style.display = 'none'; document.getElementById('quick-modal').style.display = 'none'; currentQuickIndex = -1; }
     function deleteSavedFood(index) { if(confirm('确定从快捷库删除吗？')) { savedFoods.splice(index, 1); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); } }
     
-    // 【新】仅存为快捷模板
+    // ========== 手工录入与存储核心逻辑 ==========
     function saveFoodToLibOnly() {
       const name = document.getElementById('food-name').value || '未命名'; 
       const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; 
@@ -562,24 +622,23 @@
       const libType = document.getElementById('lib-food-type').value;
       const netWeightBox = document.getElementById('food-net-weight');
       const netWeight = parseFloat(netWeightBox.value) || baseAmt;
-      if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净含量！');
+      if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净重！');
 
       savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium, type: libType, netWeight: netWeight }); 
       localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); 
       renderSavedFoods(); 
-      alert(`✅ 已将【${name}】存入快捷食物库！您以后可以直接在上面点击添加。`);
+      alert(`✅ 已将【${name}】存入上方快捷库！以后可直接点击添加。`);
       clearFoodInput();
+      // 这里不关闭弹窗，方便用户连续批量录入多个食物
     }
 
-    // 存入流水账 (或者同时存入模板)
     function addFood(saveToLib = false) { 
       const name = document.getElementById('food-name').value || '未命名'; const mealType = document.getElementById('food-meal').value; 
       const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; 
-      
       const eatAmtRaw = document.getElementById('food-eat').value; 
       let eatAmt = parseMathInput(eatAmtRaw); 
-      // 记入流水账时，必须知道吃了多少
-      if (isNaN(eatAmt) || eatAmt <= 0) return alert('❌ 记入流水账需要填写【本次吃多少】！'); 
+      
+      if (isNaN(eatAmt) || eatAmt <= 0) return alert('❌ 记入流水账需要填写【本次食用重量】！'); 
       
       const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; const energyUnit = document.getElementById('energy-unit').value; 
       const basePro = parseFloat(document.getElementById('food-pro').value) || 0; const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; 
@@ -592,7 +651,7 @@
         const libType = document.getElementById('lib-food-type').value;
         const netWeightBox = document.getElementById('food-net-weight');
         const netWeight = parseFloat(netWeightBox.value) || baseAmt;
-        if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净含量！');
+        if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净重！');
         
         savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium, type: libType, netWeight: netWeight }); 
         localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); 
@@ -600,7 +659,10 @@
       
       const ratio = eatAmt / baseAmt; 
       dailyLog.push({ id: Date.now(), name: `${name} [${eatAmt}g]`, meal: mealType, cal: Math.round(kcalPerBase * ratio), pro: Math.round((basePro * ratio)*10)/10, carb: Math.round((baseCarb * ratio)*10)/10, fat: Math.round((baseFat * ratio)*10)/10, sodium: Math.round(baseSodium * ratio) }); 
-      saveAndRefreshFood(); clearFoodInput();
+      
+      saveAndRefreshFood(); 
+      clearFoodInput();
+      closeMainAddModal(); // 记账成功，自动收起弹窗，让用户看流水账主页
     }
 
     function clearFoodInput() {
