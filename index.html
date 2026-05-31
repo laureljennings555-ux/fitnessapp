@@ -134,8 +134,8 @@
   <div class="card">
     <h2>⚖️ 体重与腰围打卡</h2>
     <div class="grid-3" style="grid-template-columns: 1fr 1fr auto; margin-bottom: 16px;">
-      <input type="number" id="weight-input" step="0.1" placeholder="体重(kg)" style="margin-bottom:0;">
-      <input type="number" id="waist-input" step="0.1" placeholder="腰围(cm) 可选" style="margin-bottom:0;">
+      <input type="text" id="weight-input" placeholder="体重(kg) 可算式" style="margin-bottom:0;">
+      <input type="text" id="waist-input" placeholder="腰围(cm) 可选" style="margin-bottom:0;">
       <button onclick="addWeightAndWaist()" style="width: 80px;">打卡</button>
     </div>
     <div class="chart-container"><canvas id="weightChart"></canvas></div>
@@ -146,8 +146,8 @@
     <h2>🤖 个人资料与目标设置</h2>
     <div class="grid-3">
       <div><label class="text-sm">性别</label><select id="profile-gender" onchange="saveProfile()" style="padding: 8px;"><option value="male">男</option><option value="female">女</option></select></div>
-      <div><label class="text-sm">年龄</label><input type="number" id="profile-age" onchange="saveProfile()" style="padding: 8px;"></div>
-      <div><label class="text-sm">身高(cm)</label><input type="number" id="profile-height" onchange="saveProfile()" style="padding: 8px;"></div>
+      <div><label class="text-sm">年龄</label><input type="text" id="profile-age" onchange="saveProfile()" style="padding: 8px;"></div>
+      <div><label class="text-sm">身高(cm)</label><input type="text" id="profile-height" onchange="saveProfile()" style="padding: 8px;"></div>
     </div>
     <div class="grid-2" style="margin-bottom: 12px;">
       <div>
@@ -160,7 +160,7 @@
       </div>
       <div>
         <label class="text-sm" style="color:var(--danger); font-weight:bold;">热量缺口设定</label>
-        <input type="number" id="profile-deficit" placeholder="如: -500" onchange="saveProfile()" style="border-color: var(--danger);">
+        <input type="text" id="profile-deficit" placeholder="如: -500" onchange="saveProfile()" style="border-color: var(--danger);">
       </div>
     </div>
     <div id="dynamic-metabolism-panel" style="font-size: 0.85rem; color: #4338ca; line-height: 1.6; background: #e0e7ff; padding: 10px; border-radius: 8px;"></div>
@@ -200,20 +200,20 @@
     </div>
     <div class="form-group">
       <div class="grid-2">
-        <div><label class="text-sm" id="food-base-label">基准(每多少g/ml)</label><input type="number" id="food-base" value="100"></div>
-        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;">本次食用重量(g)</label><input type="text" id="food-eat" placeholder="仅存模板可不填"></div>
+        <div><label class="text-sm" id="food-base-label">基准(每多少g/ml)</label><input type="text" id="food-base" value="100" placeholder="可算式"></div>
+        <div><label class="text-sm" style="color:var(--primary); font-weight:bold;">本次食用量</label><input type="text" id="food-eat" placeholder="如 110*2"></div>
       </div>
     </div>
     <label class="text-sm">👇 营养成分表数据：</label>
     <div class="input-group">
-      <input type="number" id="food-energy" placeholder="能量数值">
+      <input type="text" id="food-energy" placeholder="能量(可算式)">
       <select id="energy-unit"><option value="kj">千焦(kJ)</option><option value="kcal">千卡(kcal)</option></select>
     </div>
     <div class="grid-2">
-      <input type="number" id="food-pro" placeholder="蛋白质(g)">
-      <input type="number" id="food-carb" placeholder="碳水(g)">
-      <input type="number" id="food-fat" placeholder="脂肪(g)">
-      <input type="number" id="food-sodium" placeholder="钠(mg)">
+      <input type="text" id="food-pro" placeholder="蛋白质(g)可算式">
+      <input type="text" id="food-carb" placeholder="碳水(g)可算式">
+      <input type="text" id="food-fat" placeholder="脂肪(g)可算式">
+      <input type="text" id="food-sodium" placeholder="钠(mg)可算式">
     </div>
     
     <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border: 1px dashed #bbf7d0; margin-bottom: 16px;">
@@ -223,7 +223,7 @@
         <option value="fixed">📦 包装食品 (按包/份计，需下填单件净重)</option>
       </select>
       <div id="net-weight-box" style="display:none; margin-bottom:12px;">
-        <input type="number" id="food-net-weight" placeholder="👉 请输入该包装单件净重(g)" style="border: 1px solid #f97316; margin-bottom:0; font-size:0.85rem;">
+        <input type="text" id="food-net-weight" placeholder="👉 输入该包装单件净重(g，可算式)" style="border: 1px solid #f97316; margin-bottom:0; font-size:0.85rem;">
       </div>
       <div class="grid-2" style="gap: 8px;">
         <button class="btn-outline" onclick="saveFoodToLibOnly()" style="border-color: #10b981; color: #166534; background: #fff; padding: 10px;">➕ 仅存为模板</button>
@@ -252,6 +252,20 @@
   </div>
 
   <script>
+    // ========== 最底层的智能算式解析器 ==========
+    function parseMathInput(inputStr) { 
+      if (inputStr === null || inputStr === undefined || inputStr === '') return NaN; 
+      // 过滤掉除了数字、小数点和加减乘除以外的所有乱七八糟的字符
+      const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); 
+      if (sanitized === '') return NaN; 
+      try { 
+        // 核心：把文本直接丢进 JS 原生计算器里执行
+        return new Function('return ' + sanitized)(); 
+      } catch (e) { 
+        return NaN; 
+      } 
+    }
+
     let profile = JSON.parse(localStorage.getItem('recomp_profile_v4')) || { gender: 'male', age: 20, height: 178, activity: 1.375, deficit: -300, baselineWeight: null };
     let dailyLog = JSON.parse(localStorage.getItem('recomp_daily_log_v2')) || [];
     let weightLog = JSON.parse(localStorage.getItem('recomp_weights')) || [];
@@ -265,6 +279,7 @@
     let chartInstance = null;
     let currentQuickIndex = -1; 
 
+    // ========== 弹窗控制逻辑 ==========
     function openMainAddModal() {
        document.getElementById('main-add-overlay').style.display = 'block';
        document.getElementById('main-add-modal').style.display = 'block';
@@ -280,21 +295,16 @@
        document.getElementById('net-weight-box').style.display = value === 'fixed' ? 'block' : 'none';
     }
 
-    // ========== 精确保守的引擎系数 ==========
+    // ========== 引擎与后台逻辑 ==========
     function getCycleInfo(index) {
        const block = Math.floor(index / 8);
        const dayOfBlock = index % 8;
        const isRest = (dayOfBlock === 3 || dayOfBlock === 7);
-       
-       let blockName = ""; 
-       // 修改为极端防守型的 1.4 系数
-       let trainFactor = 1.4;
-       
+       let blockName = ""; let trainFactor = 1.4;
        if (block === 0) blockName = "容量周";
        if (block === 1) blockName = "力量周";
        if (block === 2) blockName = "巩固周";
-       if (block === 3) { blockName = "减载周"; trainFactor = 1.3; } // 减载周降至 1.3
-       
+       if (block === 3) { blockName = "减载周"; trainFactor = 1.3; }
        const factor = isRest ? 1.2 : trainFactor;
        const statusName = isRest ? "休息日" : "训练日";
        return { blockName, statusName, factor, dayNum: index + 1 };
@@ -357,6 +367,7 @@
     window.onload = function() {
       initBaselineWeight(); checkAutoArchive(); applyCycleState();
       document.getElementById('profile-gender').value = profile.gender;
+      // 初始化输入框的值
       document.getElementById('profile-age').value = profile.age;
       document.getElementById('profile-height').value = profile.height;
       renderDashboard(); renderCyclePanel(); renderFoodLog(); renderWeightHistory(); renderWeeklyReview();
@@ -407,13 +418,15 @@
       return { cal: targetCal, pro: targetPro, carb: targetCarb, fat: targetFat, bmr: bmr, tdee: tdee, weight: calcWeight, bmrFloorAlert };
     }
 
+    // 全面应用 Math 解析
     function saveProfile() {
       profile.gender = document.getElementById('profile-gender').value;
-      profile.age = parseInt(document.getElementById('profile-age').value) || 20;
-      profile.height = parseFloat(document.getElementById('profile-height').value) || 178;
+      profile.age = parseInt(parseMathInput(document.getElementById('profile-age').value)) || 20;
+      profile.height = parseFloat(parseMathInput(document.getElementById('profile-height').value)) || 178;
       profile.activity = parseFloat(document.getElementById('profile-activity').value) || 1.375;
-      profile.deficit = parseInt(document.getElementById('profile-deficit').value) || 0;
-      localStorage.setItem('recomp_profile_v4', JSON.stringify(profile)); renderDashboard(); 
+      profile.deficit = parseInt(parseMathInput(document.getElementById('profile-deficit').value)) || 0;
+      localStorage.setItem('recomp_profile_v4', JSON.stringify(profile)); 
+      renderDashboard(); 
     }
 
     function renderDashboard() {
@@ -502,11 +515,15 @@
       } else { histList.innerHTML = '<div class="text-sm" style="text-align:center; padding:10px;">暂无归档，跨天自动生成</div>'; }
     }
 
+    // 全面应用 Math 解析
     function addWeightAndWaist() {
-      const weight = parseFloat(document.getElementById('weight-input').value); const waist = parseFloat(document.getElementById('waist-input').value);
-      if (!weight) return alert('请输入有效体重');
+      const weight = parseFloat(parseMathInput(document.getElementById('weight-input').value)); 
+      const waist = parseFloat(parseMathInput(document.getElementById('waist-input').value));
+      if (isNaN(weight) || weight <= 0) return alert('❌ 请输入有效体重数值或算式！');
+      
       const entry = { date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }), weight };
-      if (waist) entry.waist = waist;
+      if (!isNaN(waist) && waist > 0) entry.waist = waist;
+      
       weightLog.unshift(entry); localStorage.setItem('recomp_weights', JSON.stringify(weightLog));
       document.getElementById('weight-input').value = ''; document.getElementById('waist-input').value = '';
       
@@ -521,8 +538,6 @@
       }
       renderWeightHistory(); renderDashboard(); renderWeeklyReview();
     }
-
-    function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
     
     function renderSavedFoods() { 
       const area = document.getElementById('saved-foods-area'); const list = document.getElementById('saved-foods-list');
@@ -556,12 +571,12 @@
 
       const eatLabel = document.getElementById('qm-eat-label'); const eatInput = document.getElementById('qm-eat');
       if (isFixed) {
-          eatLabel.innerText = `👇 今天吃了几份/包/个？(默认 1)`; eatInput.value = '1'; eatInput.placeholder = '支持小数如：1 或 0.5';
+          eatLabel.innerText = `👇 今天吃了几份/包/个？(支持算式，如0.5)`; eatInput.value = '1'; eatInput.placeholder = '如：1 或 0.5';
       } else {
-          eatLabel.innerText = `👇 本次称重的实际重量(g)：`; eatInput.value = ''; eatInput.placeholder = '输入称重克数，如 150';
+          eatLabel.innerText = `👇 本次称重的实际重量(g)：`; eatInput.value = ''; eatInput.placeholder = '输入称重克数，可算式如 150*2';
       }
       document.getElementById('quick-modal-overlay').style.display = 'block'; document.getElementById('quick-modal').style.display = 'block'; 
-      document.getElementById('main-add-modal').style.display = 'none'; // 暂时隐藏主弹窗
+      document.getElementById('main-add-modal').style.display = 'none'; 
     }
 
     function confirmQuickAdd() { 
@@ -570,7 +585,7 @@
       const eatAmtRaw = document.getElementById('qm-eat').value; 
       let parsedVal = parseMathInput(eatAmtRaw); 
       if (isNaN(parsedVal) || parsedVal <= 0) { 
-        if (eatAmtRaw.trim() === '') { parsedVal = 1; } else { return alert('❌ 请输入有效的数字！'); } 
+        if (eatAmtRaw.trim() === '') { parsedVal = 1; } else { return alert('❌ 请输入有效的数字或算式！'); } 
       } 
       const mealType = document.getElementById('qm-meal').value; 
       const finalEatWeight = isFixed ? (parsedVal * food.netWeight) : parsedVal;
@@ -590,7 +605,6 @@
       document.getElementById('quick-modal-overlay').style.display = 'none'; 
       document.getElementById('quick-modal').style.display = 'none'; 
       currentQuickIndex = -1; 
-      // 恢复显示主弹窗
       if (document.getElementById('main-add-overlay').style.display === 'block') {
          document.getElementById('main-add-modal').style.display = 'block';
       }
@@ -598,22 +612,24 @@
     
     function deleteSavedFood(index) { if(confirm('确定从快捷库删除吗？')) { savedFoods.splice(index, 1); localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); } }
     
+    // 全面应用 Math 解析
     function saveFoodToLibOnly() {
       const name = document.getElementById('food-name').value || '未命名'; 
-      const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; 
-      const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; 
+      const baseAmt = parseFloat(parseMathInput(document.getElementById('food-base').value)) || 100; 
+      const energyVal = parseFloat(parseMathInput(document.getElementById('food-energy').value)) || 0; 
       const energyUnit = document.getElementById('energy-unit').value; 
-      const basePro = parseFloat(document.getElementById('food-pro').value) || 0; 
-      const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; 
-      const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; 
-      const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; 
+      const basePro = parseFloat(parseMathInput(document.getElementById('food-pro').value)) || 0; 
+      const baseCarb = parseFloat(parseMathInput(document.getElementById('food-carb').value)) || 0; 
+      const baseFat = parseFloat(parseMathInput(document.getElementById('food-fat').value)) || 0; 
+      const baseSodium = parseFloat(parseMathInput(document.getElementById('food-sodium').value)) || 0; 
       
       if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('❌ 请填写营养表数据'); 
       
       const libType = document.getElementById('lib-food-type').value;
       const netWeightBox = document.getElementById('food-net-weight');
-      const netWeight = parseFloat(netWeightBox.value) || baseAmt;
-      if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净含量！');
+      const netWeight = parseFloat(parseMathInput(netWeightBox.value)) || baseAmt;
+      
+      if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净重！');
 
       savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium, type: libType, netWeight: netWeight }); 
       localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); 
@@ -622,17 +638,22 @@
       clearFoodInput();
     }
 
+    // 全面应用 Math 解析
     function addFood(saveToLib = false) { 
-      const name = document.getElementById('food-name').value || '未命名'; const mealType = document.getElementById('food-meal').value; 
-      const baseAmt = parseFloat(document.getElementById('food-base').value) || 100; 
+      const name = document.getElementById('food-name').value || '未命名'; 
+      const mealType = document.getElementById('food-meal').value; 
+      const baseAmt = parseFloat(parseMathInput(document.getElementById('food-base').value)) || 100; 
       const eatAmtRaw = document.getElementById('food-eat').value; 
       let eatAmt = parseMathInput(eatAmtRaw); 
       
-      if (isNaN(eatAmt) || eatAmt <= 0) return alert('❌ 记入流水账需要填写【本次食用重量】！'); 
+      if (isNaN(eatAmt) || eatAmt <= 0) return alert('❌ 记入流水账需要填写【本次食用量】！'); 
       
-      const energyVal = parseFloat(document.getElementById('food-energy').value) || 0; const energyUnit = document.getElementById('energy-unit').value; 
-      const basePro = parseFloat(document.getElementById('food-pro').value) || 0; const baseCarb = parseFloat(document.getElementById('food-carb').value) || 0; 
-      const baseFat = parseFloat(document.getElementById('food-fat').value) || 0; const baseSodium = parseFloat(document.getElementById('food-sodium').value) || 0; 
+      const energyVal = parseFloat(parseMathInput(document.getElementById('food-energy').value)) || 0; 
+      const energyUnit = document.getElementById('energy-unit').value; 
+      const basePro = parseFloat(parseMathInput(document.getElementById('food-pro').value)) || 0; 
+      const baseCarb = parseFloat(parseMathInput(document.getElementById('food-carb').value)) || 0; 
+      const baseFat = parseFloat(parseMathInput(document.getElementById('food-fat').value)) || 0; 
+      const baseSodium = parseFloat(parseMathInput(document.getElementById('food-sodium').value)) || 0; 
       
       if(energyVal === 0 && basePro === 0 && baseCarb === 0 && baseFat === 0) return alert('❌ 请填写营养表数据'); 
       let kcalPerBase = energyUnit === 'kj' ? energyVal / 4.184 : energyVal; 
@@ -640,8 +661,8 @@
       if (saveToLib) { 
         const libType = document.getElementById('lib-food-type').value;
         const netWeightBox = document.getElementById('food-net-weight');
-        const netWeight = parseFloat(netWeightBox.value) || baseAmt;
-        if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净含量！');
+        const netWeight = parseFloat(parseMathInput(netWeightBox.value)) || baseAmt;
+        if (libType === 'fixed' && !netWeightBox.value) return alert('❌ 包装食品必须填写单件净重！');
         
         savedFoods.push({ name, baseAmt, energy: energyVal, unit: energyUnit, pro: basePro, carb: baseCarb, fat: baseFat, sodium: baseSodium, type: libType, netWeight: netWeight }); 
         localStorage.setItem('recomp_saved_foods_v2', JSON.stringify(savedFoods)); renderSavedFoods(); 
