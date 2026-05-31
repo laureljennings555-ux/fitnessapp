@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Recomp Tracker Ultimate Guard</title>
+  <title>Recomp Tracker Pro Max</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -64,7 +64,7 @@
 </head>
 <body>
 
-  <!-- 1. 今日进度 -->
+  <!-- 1. 今日动态进度 -->
   <div class="card">
     <h2>📊 今日动态进度 <button class="btn-outline" onclick="resetDaily()" style="width:auto;">清空重记</button></h2>
     <div class="progress-wrap">
@@ -90,12 +90,12 @@
     <div id="rice-calculator" style="margin-top: 16px; background: #fff7ed; border-radius: 8px; padding: 12px; border: 1px dashed #fdba74;"></div>
   </div>
 
-  <!-- 2. 7天智能稽查面板 -->
+  <!-- 2. 7天闭环复盘 -->
   <div class="card" style="background: #fdfaf5; border: 1px solid #fde68a;">
     <h2>📈 近7日闭环数据稽查</h2>
     <div class="grid-3" style="gap: 8px; margin-bottom: 12px;">
       <div class="review-box">
-        <div class="text-sm">7天均体重</div>
+        <div class="text-sm">7天均重</div>
         <div class="review-val" id="avg-weight">--</div>
         <div class="text-sm" id="avg-waist" style="color: #64748b;">腰围 --</div>
       </div>
@@ -110,13 +110,19 @@
         <div class="text-sm">kcal</div>
       </div>
     </div>
-    
     <!-- AI 偏差分析结论框 -->
     <div id="ai-analysis-container"></div>
     <ul class="weight-list" id="weekly-history-list" style="margin-top: 16px;"></ul>
   </div>
 
-  <!-- 3. 饮食记录 -->
+  <!-- 3. 32天三分化训练轨道引擎 -->
+  <div class="card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+    <h2>🗓️ 32天三分化训练引擎 <button class="btn-outline" onclick="resetCycle()" style="width:auto; border-color:#166534; color:#166534;">重置回第1天</button></h2>
+    <div id="cycle-info-panel"></div>
+    <button id="cycle-delay-btn" onclick="toggleDelayCycle()" style="margin-top:12px; padding: 10px; font-size: 0.95rem;"></button>
+  </div>
+
+  <!-- 4. 饮食记录 -->
   <div class="card">
     <h2>📸 精准饮食记录</h2>
     <div id="saved-foods-area" style="display: none;">
@@ -144,22 +150,19 @@
       <input type="number" id="food-fat" placeholder="脂肪(g)">
       <input type="number" id="food-sodium" placeholder="钠(mg)">
     </div>
-    
-    <!-- 升级：双模引擎入库选择 -->
     <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 16px;">
       <label class="checkbox-wrap" style="margin-bottom:0;">
         <input type="checkbox" id="save-to-lib" onchange="document.getElementById('lib-type-container').style.display = this.checked ? 'block' : 'none';">
         ⭐️ 同时存入上方“快捷食物库”
       </label>
       <div id="lib-type-container" style="display:none; margin-top: 10px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
-        <label class="text-sm" style="color:var(--primary); font-weight:bold;">选择存入类型 (决定快捷点击时的行为)：</label>
+        <label class="text-sm" style="color:var(--primary); font-weight:bold;">选择存入类型：</label>
         <select id="lib-food-type" style="margin-bottom:0; font-size:0.85rem; border: 1px solid var(--primary);">
-          <option value="fixed">📦 包装食品 (固定单份，如鸭腿/面包，点击默认吃1份)</option>
-          <option value="weigh" selected>⚖️ 散装食物 (如米饭/蔬菜，每次需自己填称重)</option>
+          <option value="fixed">📦 包装食品 (固定单份，如鸭腿/面包)</option>
+          <option value="weigh" selected>⚖️ 散装食物 (如米饭/蔬菜，需自己填称重)</option>
         </select>
       </div>
     </div>
-
     <button onclick="addFood()">存入流水账</button>
   </div>
 
@@ -170,10 +173,9 @@
     <div id="empty-food" class="text-sm" style="text-align: center; padding: 10px; color: #94a3b8;">今天还没吃东西哦</div>
   </div>
 
-  <!-- 4. 体重与腰围打卡 -->
+  <!-- 5. 体重打卡 -->
   <div class="card">
     <h2>⚖️ 体重与腰围打卡</h2>
-    <!-- 新增：腰围输入框 -->
     <div class="grid-3" style="grid-template-columns: 1fr 1fr auto; margin-bottom: 16px;">
       <input type="number" id="weight-input" step="0.1" placeholder="体重(kg)" style="margin-bottom:0;">
       <input type="number" id="waist-input" step="0.1" placeholder="腰围(cm) 可选" style="margin-bottom:0;">
@@ -183,9 +185,9 @@
     <ul class="weight-list" id="weight-history"></ul>
   </div>
 
-  <!-- 5. 引擎设置与个人资料 -->
+  <!-- 6. 引擎设置 -->
   <div class="settings-panel" style="background: #eef2ff; border-color: #c7d2fe;">
-    <h2 style="border:none; padding:0; margin-bottom:12px; color: #4338ca;">🤖 AI守护自适应引擎</h2>
+    <h2 style="border:none; padding:0; margin-bottom:12px; color: #4338ca;">🤖 个人资料与目标设置</h2>
     <div class="grid-3">
       <div><label class="text-sm">性别</label><select id="profile-gender" onchange="saveProfile()" style="padding: 8px;"><option value="male">男</option><option value="female">女</option></select></div>
       <div><label class="text-sm">年龄</label><input type="number" id="profile-age" onchange="saveProfile()" style="padding: 8px;"></div>
@@ -195,14 +197,16 @@
       <div>
         <label class="text-sm" style="color:var(--primary); font-weight:bold;">今日活动系数</label>
         <select id="profile-activity" onchange="saveProfile()">
-          <option value="1.2">🛌 休息日 (1.2)</option>
-          <option value="1.375">🚶 轻度/力量 (1.375)</option>
+          <option value="1.2">🛌 休息日 / 未练 (1.2)</option>
+          <option value="1.375">🚶 轻度/减载周 (1.375)</option>
           <option value="1.55">🏋️ 中高强度 (1.55)</option>
         </select>
+        <div style="font-size:0.7rem; color:#64748b; margin-top:2px;">(受上方训练引擎自动接管)</div>
       </div>
       <div>
-        <label class="text-sm" style="color:var(--danger); font-weight:bold;">目标增减设定</label>
-        <input type="number" id="profile-deficit" placeholder="减脂如: -300" onchange="saveProfile()" style="border-color: var(--danger);">
+        <label class="text-sm" style="color:var(--danger); font-weight:bold;">热量缺口设定</label>
+        <input type="number" id="profile-deficit" placeholder="如: -500" onchange="saveProfile()" style="border-color: var(--danger);">
+        <div style="font-size:0.7rem; color:#64748b; margin-top:2px;">(引擎接管：训练日-500 / 休息日-300)</div>
       </div>
     </div>
     <div id="dynamic-metabolism-panel" style="font-size: 0.85rem; color: #4338ca; line-height: 1.6; background: #e0e7ff; padding: 10px; border-radius: 8px;"></div>
@@ -224,7 +228,7 @@
     </div>
   </div>
 
-  <!-- 快捷弹窗 (双模引擎) -->
+  <!-- 快捷弹窗 (双模) -->
   <div class="modal-overlay" id="quick-modal-overlay" onclick="closeQuickModal()"></div>
   <div class="modal" id="quick-modal">
     <h3 id="qm-title">添加食物</h3>
@@ -248,8 +252,50 @@
     let savedFoods = JSON.parse(localStorage.getItem('recomp_saved_foods_v2')) || [];
     let dailySummaries = JSON.parse(localStorage.getItem('recomp_daily_summaries')) || [];
     
+    let todayMidnight = new Date();
+    todayMidnight.setHours(0,0,0,0);
+    let cycle = JSON.parse(localStorage.getItem('recomp_cycle_v1')) || { dayIndex: 0, lastUpdate: todayMidnight.getTime(), isDelayedToday: false };
+
     let chartInstance = null;
     let currentQuickIndex = -1; 
+
+    // ========== 核心升级：获取周期信息与热量联动 ==========
+    function getCycleInfo(index) {
+       const block = Math.floor(index / 8);
+       const dayOfBlock = index % 8;
+       // 第4天(idx=3)和第8天(idx=7)为休息日
+       const isRest = (dayOfBlock === 3 || dayOfBlock === 7);
+       
+       let blockName = "";
+       let trainFactor = 1.55;
+       if (block === 0) blockName = "容量周";
+       if (block === 1) blockName = "力量周";
+       if (block === 2) { blockName = "巩固周"; trainFactor = 1.55; }
+       if (block === 3) { blockName = "减载周"; trainFactor = 1.375; }
+
+       const factor = isRest ? 1.2 : trainFactor;
+       const statusName = isRest ? "休息日" : "训练日";
+       return { blockName, statusName, factor, dayNum: index + 1 };
+    }
+
+    // ========== 核心升级：双轨状态应用器 (系数 & 缺口全接管) ==========
+    function applyCycleState() {
+       const info = getCycleInfo(cycle.dayIndex);
+       if (cycle.isDelayedToday || info.statusName === '休息日') {
+          profile.activity = 1.2;
+          profile.deficit = -300;
+       } else {
+          profile.activity = info.factor;
+          profile.deficit = -500;
+       }
+       localStorage.setItem('recomp_profile_v4', JSON.stringify(profile));
+       
+       // 同步更新UI上的输入框显示
+       const elActivity = document.getElementById('profile-activity');
+       const elDeficit = document.getElementById('profile-deficit');
+       if(elActivity) elActivity.value = profile.activity;
+       if(elDeficit) elDeficit.value = profile.deficit;
+    }
 
     function initBaselineWeight() {
       if (!profile.baselineWeight) {
@@ -264,32 +310,111 @@
       const todayStr = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
       let activeDate = localStorage.getItem('recomp_active_date');
       
-      if (!activeDate) { localStorage.setItem('recomp_active_date', todayStr); return; }
+      let todayMid = new Date();
+      todayMid.setHours(0,0,0,0);
+
+      if (!activeDate) { 
+        localStorage.setItem('recomp_active_date', todayStr); 
+        localStorage.setItem('recomp_cycle_v1', JSON.stringify(cycle));
+        applyCycleState(); // 初始化强制接管状态
+        return; 
+      }
       
       if (activeDate !== todayStr) {
         if (dailyLog.length > 0) {
           const t = getDynamicTargets(); 
           let sumsCal = 0;
           dailyLog.forEach(food => sumsCal += food.cal);
-          
           dailySummaries.unshift({ date: activeDate, consumed: Math.round(sumsCal), target: t.cal, tdee: t.tdee });
           localStorage.setItem('recomp_daily_summaries', JSON.stringify(dailySummaries));
         }
         dailyLog = [];
         localStorage.setItem('recomp_daily_log_v2', JSON.stringify(dailyLog));
         localStorage.setItem('recomp_active_date', todayStr);
+
+        const lastUpdateDate = new Date(cycle.lastUpdate);
+        const diffDays = Math.max(0, Math.round((todayMid - lastUpdateDate) / 86400000));
+        
+        if (diffDays > 0) {
+           let advanceDays = diffDays;
+           if (cycle.isDelayedToday) {
+              advanceDays = diffDays - 1; 
+           }
+           cycle.dayIndex = (cycle.dayIndex + advanceDays) % 32;
+           cycle.isDelayedToday = false; 
+           cycle.lastUpdate = todayMid.getTime();
+           localStorage.setItem('recomp_cycle_v1', JSON.stringify(cycle));
+
+           // 进入新一天，引擎重新全量接管并计算今天该用什么参数
+           applyCycleState();
+        }
       }
     }
 
     window.onload = function() {
-      initBaselineWeight(); checkAutoArchive();
+      initBaselineWeight(); 
+      checkAutoArchive();
+      
+      // 确保界面刷新时参数严格同步引擎
+      applyCycleState();
+
       document.getElementById('profile-gender').value = profile.gender;
       document.getElementById('profile-age').value = profile.age;
       document.getElementById('profile-height').value = profile.height;
-      document.getElementById('profile-activity').value = profile.activity;
-      document.getElementById('profile-deficit').value = profile.deficit;
-      renderDashboard(); renderFoodLog(); renderWeightHistory(); renderSavedFoods(); renderWeeklyReview();
+      
+      renderDashboard(); renderCyclePanel(); renderFoodLog(); renderWeightHistory(); renderSavedFoods(); renderWeeklyReview();
     };
+
+    function renderCyclePanel() {
+       const info = getCycleInfo(cycle.dayIndex);
+       const panel = document.getElementById('cycle-info-panel');
+       const btn = document.getElementById('cycle-delay-btn');
+       
+       let statusHtml = '';
+       if (cycle.isDelayedToday) {
+          statusHtml = `<div style="color:#ef4444; font-weight:bold; font-size:1.1rem; margin-top:4px;">⏸️ 今日已标记：没练 (计划已顺延)</div>
+                        <div style="font-size:0.85rem; color:#166534; margin-top:2px;">系数降至 1.2，缺口设为 -300。明日本计划将重新加载。</div>`;
+          btn.innerText = "撤销没练 (恢复今日计划)";
+          btn.style.background = "#f1f5f9";
+          btn.style.color = "#475569";
+          btn.style.border = "1px solid #cbd5e1";
+       } else {
+          statusHtml = `<div style="color:#166534; font-weight:bold; font-size:1.2rem; margin-top:4px;">▶ ${info.blockName} - ${info.statusName} (第 ${info.dayNum} 天)</div>
+                        <div style="font-size:0.85rem; color:#166534; margin-top:2px;">自动分配系数：${info.factor} | 缺口目标：${info.statusName === '休息日' ? '-300' : '-500'}</div>`;
+          
+          if (info.statusName === '休息日') {
+             btn.innerText = "☕ 今日是计划休息日 (已自动降热量)";
+             btn.style.background = "#e2e8f0";
+             btn.style.color = "#94a3b8";
+             btn.disabled = true;
+          } else {
+             btn.innerText = "❌ 突发情况：今天没练 (点击顺延并降热量)";
+             btn.style.background = "var(--danger)";
+             btn.style.color = "#fff";
+             btn.disabled = false;
+          }
+       }
+       panel.innerHTML = statusHtml;
+    }
+
+    function toggleDelayCycle() {
+      cycle.isDelayedToday = !cycle.isDelayedToday;
+      localStorage.setItem('recomp_cycle_v1', JSON.stringify(cycle));
+      applyCycleState();
+      renderCyclePanel();
+      renderDashboard(); // 面板状态变更，立即重绘顶部的进度条和热量数字
+    }
+
+    function resetCycle() {
+       if (confirm('确定要将计划重置回第 1 天（容量周）吗？')) {
+          cycle.dayIndex = 0;
+          cycle.isDelayedToday = false;
+          localStorage.setItem('recomp_cycle_v1', JSON.stringify(cycle));
+          applyCycleState();
+          renderCyclePanel();
+          renderDashboard();
+       }
+    }
 
     function getDynamicTargets() {
       const calcWeight = profile.baselineWeight; 
@@ -319,8 +444,11 @@
       profile.gender = document.getElementById('profile-gender').value;
       profile.age = parseInt(document.getElementById('profile-age').value) || 20;
       profile.height = parseFloat(document.getElementById('profile-height').value) || 178;
+      
+      // 如果用户非要手动去修改设置框的数字，我们也允许他们覆盖系统的判定
       profile.activity = parseFloat(document.getElementById('profile-activity').value) || 1.375;
       profile.deficit = parseInt(document.getElementById('profile-deficit').value) || 0;
+      
       localStorage.setItem('recomp_profile_v4', JSON.stringify(profile));
       renderDashboard(); 
     }
@@ -328,21 +456,17 @@
     function renderDashboard() {
       const t = getDynamicTargets();
       let sums = { cal: 0, pro: 0, carb: 0, fat: 0, sodium: 0 };
-      
       let mealCarbs = { '早餐': 0, '午餐': 0, '晚餐': 0, '加餐': 0 };
 
       dailyLog.forEach(food => { 
         sums.cal += food.cal; sums.pro += food.pro; sums.carb += food.carb; sums.fat += food.fat; sums.sodium += (food.sodium || 0); 
-        if (mealCarbs[food.meal] !== undefined) {
-          mealCarbs[food.meal] += food.carb;
-        }
+        if (mealCarbs[food.meal] !== undefined) { mealCarbs[food.meal] += food.carb; }
       });
       
       document.getElementById('display-baseline').innerText = t.weight.toFixed(1);
 
       let bmrWarningHtml = t.bmrFloorAlert 
-        ? `<div style="color:#ef4444; font-weight:bold; margin-top:6px; border-top:1px dashed #ef4444; padding-top:6px;">⚠️ 设定缺口过大！为保护内分泌，已强制将热量锁在 BMR 底线。</div>` 
-        : ``;
+        ? `<div style="color:#ef4444; font-weight:bold; margin-top:6px; border-top:1px dashed #ef4444; padding-top:6px;">⚠️ 设定缺口过大！为保护内分泌，已强制将热量锁在 BMR 底线。</div>` : ``;
 
       document.getElementById('dynamic-metabolism-panel').innerHTML = `
         BMR: <b>${t.bmr}</b> | 今日 TDEE: <b>${t.tdee}</b> kcal<br>
@@ -370,6 +494,7 @@
       document.getElementById('bar-carb').style.width = Math.min((sums.carb/t.carb)*100, 100) + '%';
       document.getElementById('bar-fat').style.width = Math.min((sums.fat/t.fat)*100, 100) + '%';
 
+      // 米饭分配器
       const riceEl = document.getElementById('rice-calculator');
       if (riceEl) {
         const carbPool = Math.max(0, t.carb - mealCarbs['早餐'] - mealCarbs['加餐']);
@@ -456,43 +581,38 @@
               <div class="ai-guard-box" style="background:#f5f3ff; border:1px solid #c4b5fd; color:#5b21b6;">
                 🌟 <b>AI 终极判定：完美的身体重组！</b><br>
                 体重变化不大（${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)}kg），但您的腰围却缩减了 <b>${Math.abs(waistDiff).toFixed(1)} cm</b>！<br>
-                这意味着您减掉的脂肪重量，完全被新长出的肌肉填补了。这是健身界最难达成的顶级成果，请无视体重秤，继续保持！
+                这意味着您减掉的脂肪重量，完全被新长出的肌肉填补了。继续保持！
               </div>`;
           } 
           else if (realDeficit > 150 && weightDiff > 0) {
             aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">
-                💡 <b>AI 数据稽查：记录误差警报！</b><br>
-                您近几天日均有 <b>${realDeficit} kcal</b> 的缺口，理论应瘦 <b>${theoreticalLoss.toFixed(2)} kg</b>。<br>
-                但实际却反涨了 <b>${weightDiff.toFixed(1)} kg</b>。<br>
-                <b>建议排查：</b><br>
-                1. 漏记隐形热量（炒菜油、酱汁、零食）。<br>
-                2. 食物生熟重混淆（熟米饭按生米热量记了）。<br>
-                3. 重训后肌肉发炎或吃得太咸引起的严重生理储水。
+                💡 <b>AI 数据稽查：误差警报！</b><br>
+                均有 <b>${realDeficit} kcal</b> 缺口，理论应瘦 <b>${theoreticalLoss.toFixed(2)} kg</b>。<br>
+                但实际反涨 <b>${weightDiff.toFixed(1)} kg</b>。<br>
+                建议排查隐形油脂、生熟重混淆、生理储水。
               </div>`;
           } else if (realDeficit > 150 && weightDiff > -0.2 && weightDiff <= 0) {
             aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#fffbeb; border:1px solid #fde68a; color:#92400e;">
                 💡 <b>AI 数据稽查：平台期或轻微漏记</b><br>
-                近期理论应减 <b>${theoreticalLoss.toFixed(2)} kg</b>，但实际体重无明显下降。<br>
-                若不是处于生理期/高压睡眠差状态，请更严谨地称量碳水和脂肪。
+                理论应减 <b>${theoreticalLoss.toFixed(2)} kg</b>，实际无明显下降。若无生理状态干扰，请严抓称重。
               </div>`;
           } else if (realDeficit > 100 && weightDiff <= -0.2) {
             aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;">
                 🎉 <b>AI 数据稽查：完美执行期！</b><br>
-                数据完全吻合。您不仅保持了热量缺口，体重也如期下降了 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>，干得漂亮！
+                数据完全吻合。体重如期下降 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>，干得漂亮！
               </div>`;
           } else if (realDeficit < -150 && weightDiff < 0) {
              aiBox.innerHTML = `
               <div class="ai-guard-box" style="background:#fef2f2; border:1px solid #fca5a5; color:#991b1b;">
                 💡 <b>AI 数据稽查：热量高估警报！</b><br>
-                您日均有盈余，但体重却反掉了 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>。<br>
-                您的实际日常消耗远大于估算，或者您高估了吃进去的食物重量！
+                日均盈余，但反掉了 <b>${Math.abs(weightDiff).toFixed(1)} kg</b>。<br>消耗估算偏低或高估了摄入量！
               </div>`;
           }
         } else {
-          aiBox.innerHTML = `<div class="text-sm" style="margin-top: 10px; color: #94a3b8; text-align: center;">(累积满 5 天记录后，AI 将自动进行闭环误差分析)</div>`;
+          aiBox.innerHTML = `<div class="text-sm" style="margin-top: 10px; color: #94a3b8; text-align: center;">(累积满 5 天记录后，AI 将自动分析闭环误差)</div>`;
         }
 
         recentSummaries.forEach(sum => {
@@ -501,7 +621,6 @@
           const diffHTML = diff >= 0 
             ? `<span style="color:#10b981; font-weight:bold;">缺口 ${diff}</span>` 
             : `<span style="color:#ef4444; font-weight:bold;">盈余 ${Math.abs(diff)}</span>`;
-          
           li.innerHTML = `<span><span class="text-sm" style="display:inline-block; width:45px;">${sum.date}</span> 摄入 <b>${sum.consumed}</b> / 消耗 ${sum.tdee}</span>${diffHTML}`;
           histList.appendChild(li);
         });
@@ -516,7 +635,6 @@
       if (!weight) return alert('请输入有效体重');
       
       const dateStr = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
-      
       const entry = { date: dateStr, weight: weight };
       if (waist) entry.waist = waist;
 
@@ -538,13 +656,11 @@
           alert(`🎉 触发【动态校准】！\n\n您的近期平均体重已实质性变为 ${profile.baselineWeight}kg (原:${oldBaseline}kg)。\n\n系统已自动重算基础代谢及宏量营养素！`);
         }
       }
-
       renderWeightHistory(); renderDashboard(); renderWeeklyReview();
     }
 
     function parseMathInput(inputStr) { if (!inputStr) return NaN; const sanitized = String(inputStr).replace(/[^0-9\.\+\-\*\/]/g, ''); if (sanitized === '') return NaN; try { return new Function('return ' + sanitized)(); } catch (e) { return NaN; } }
     
-    // ========== 双模引擎更新：渲染带有类型图标和千卡的快捷库 ==========
     function renderSavedFoods() { 
       const area = document.getElementById('saved-foods-area'); 
       const list = document.getElementById('saved-foods-list'); 
@@ -570,7 +686,6 @@
       }); 
     }
     
-    // ========== 弹窗：动态加载迷你营养表与自动适配填充 ==========
     function openQuickModal(index) { 
       currentQuickIndex = index; 
       const food = savedFoods[index]; 
@@ -626,7 +741,6 @@
       let finalKcal = food.energy; 
       if (food.unit === 'kj') finalKcal = food.energy / 4.184; 
       
-      // 流水账显示优化：包装食品显示“x份(xg)”，散装显示“xg”
       const displayAmt = isFixed ? `${parsedVal}份(${eatAmt}g)` : `${eatAmt}g`;
 
       dailyLog.push({ 
@@ -711,8 +825,8 @@
     }
     
     function updateChart() { const ctx = document.getElementById('weightChart').getContext('2d'); const recent7 = weightLog.slice(0, 7).reverse(); const labels = recent7.map(entry => entry.date); const data = recent7.map(entry => entry.weight); const minWeight = Math.min(...data) || 70; const maxWeight = Math.max(...data) || 80; if (chartInstance) { chartInstance.data.labels = labels; chartInstance.data.datasets[0].data = data; chartInstance.options.scales.y.suggestedMin = minWeight - 0.5; chartInstance.options.scales.y.suggestedMax = maxWeight + 0.5; chartInstance.update(); } else { chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: '体重', data: data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { suggestedMin: minWeight - 0.5, suggestedMax: maxWeight + 0.5 } } } }); } }
-    function exportData() { const data = { profile: localStorage.getItem('recomp_profile_v4'), activeDate: localStorage.getItem('recomp_active_date'), dailyLog: localStorage.getItem('recomp_daily_log_v2'), weights: localStorage.getItem('recomp_weights'), savedFoods: localStorage.getItem('recomp_saved_foods_v2'), summaries: localStorage.getItem('recomp_daily_summaries') }; const blob = new Blob([JSON.stringify(data)], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `recomp_backup_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.json`; a.click(); }
-    function importData(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); if(data.profile) localStorage.setItem('recomp_profile_v4', data.profile); if(data.activeDate) localStorage.setItem('recomp_active_date', data.activeDate); if(data.dailyLog) localStorage.setItem('recomp_daily_log_v2', data.dailyLog); if(data.weights) localStorage.setItem('recomp_weights', data.weights); if(data.savedFoods) localStorage.setItem('recomp_saved_foods_v2', data.savedFoods); if(data.summaries) localStorage.setItem('recomp_daily_summaries', data.summaries); alert('🎉 恢复成功！'); location.reload(); } catch(err) { alert('❌ 格式错误！'); } }; reader.readAsText(file); }
+    function exportData() { const data = { profile: localStorage.getItem('recomp_profile_v4'), activeDate: localStorage.getItem('recomp_active_date'), dailyLog: localStorage.getItem('recomp_daily_log_v2'), weights: localStorage.getItem('recomp_weights'), savedFoods: localStorage.getItem('recomp_saved_foods_v2'), summaries: localStorage.getItem('recomp_daily_summaries'), cycle: localStorage.getItem('recomp_cycle_v1') }; const blob = new Blob([JSON.stringify(data)], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `recomp_backup_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.json`; a.click(); }
+    function importData(event) { const file = event.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const data = JSON.parse(e.target.result); if(data.profile) localStorage.setItem('recomp_profile_v4', data.profile); if(data.activeDate) localStorage.setItem('recomp_active_date', data.activeDate); if(data.dailyLog) localStorage.setItem('recomp_daily_log_v2', data.dailyLog); if(data.weights) localStorage.setItem('recomp_weights', data.weights); if(data.savedFoods) localStorage.setItem('recomp_saved_foods_v2', data.savedFoods); if(data.summaries) localStorage.setItem('recomp_daily_summaries', data.summaries); if(data.cycle) localStorage.setItem('recomp_cycle_v1', data.cycle); alert('🎉 恢复成功！'); location.reload(); } catch(err) { alert('❌ 格式错误！'); } }; reader.readAsText(file); }
   </script>
 </body>
 </html>
